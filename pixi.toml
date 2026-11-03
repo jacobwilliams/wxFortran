@@ -12,6 +12,9 @@ python = "3.13.*"
 wxwidgets = "3.3.*"
 # C++ compiler for the shim
 cxx-compiler = ">=2.0.0,<3"
+# API documentation (pixi run doc); graphviz draws FORD's dependency graphs
+ford = ">=7.0"
+graphviz = "*"
 
 [target.unix.dependencies]
 pkg-config = ">=0.29.2,<0.30"
@@ -23,5 +26,8 @@ test = "python tools/fpm_wx.py test"
 # are unaffected). `pixi run build` builds them in debug, without OpenMP: serial.
 example = "python tools/fpm_wx.py run --profile release --openmp --example"
 lint = "python tools/check_fortran.py"
+# API documentation in doc/ (open doc/index.html). `dot -c` registers the
+# graphviz plugins (normally done by its install script, which pixi does not run)
+doc = "dot -c && ford ford.md"
 # build and run ci/consumer, a separate fpm project that depends on wxFortran
 consumer = { cmd = "python ../../tools/fpm_wx.py run", cwd = "ci/consumer" }

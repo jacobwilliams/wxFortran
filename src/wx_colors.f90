@@ -1,4 +1,4 @@
-!> Colors: [[wx_color]] (8-bit red, green, blue and alpha), named colors,
+!> Colors for drawing: [[wx_color]] (8-bit red, green, blue and alpha), named colors,
 !> and parsing of `"#rrggbb"` strings.
 module wx_colors
 

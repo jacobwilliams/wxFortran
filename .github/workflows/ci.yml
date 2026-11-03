@@ -31,6 +31,10 @@ jobs:
         if: runner.os == 'Linux'
         run: pixi run lint
 
+      - name: API documentation (FORD)
+        if: runner.os == 'Linux'
+        run: pixi run doc
+
       - name: Build library and examples
         run: pixi run build
 

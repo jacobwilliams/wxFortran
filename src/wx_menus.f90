@@ -1,4 +1,4 @@
-!> Menus: [[wx_menu_bar]] and [[wx_menu]].
+!> Menus and menu bars: [[wx_menu_bar]] and [[wx_menu]].
 !>
 !> ```fortran
 !> bar = wx_menu_bar()

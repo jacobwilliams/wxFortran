@@ -1,4 +1,4 @@
-!> Events: Fortran handlers for wxWidgets events, and deferred calls.
+!> Event handling: Fortran handlers for wxWidgets events, and deferred calls.
 !>
 !> ### Contract
 !>

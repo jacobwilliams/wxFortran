@@ -48,6 +48,7 @@ pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
 pixi run example hello  # or: form, showcase (widgets, events, dialogs), layout, plot, mandelbrot
 pixi run lint           # docstrings and implicit none in interface bodies
+pixi run doc            # API documentation with FORD, in doc/ (open doc/index.html)
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
 

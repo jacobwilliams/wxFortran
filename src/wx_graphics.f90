@@ -1,4 +1,4 @@
-!> Drawing: [[wx_graphics]], the anti-aliased 2D drawing context passed to
+!> Drawing with [[wx_graphics]], the anti-aliased 2D drawing context passed to
 !> `wxEVT_PAINT` handlers, plus offscreen rendering to PNG and image reading.
 !>
 !> ```fortran

@@ -1,4 +1,4 @@
-!> Timers: call a handler periodically, or once after a delay, from the
+!> Timers, which call a handler periodically, or once after a delay, from the
 !> event loop.
 !>
 !> ```fortran
