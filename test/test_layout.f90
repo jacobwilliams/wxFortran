@@ -272,12 +272,15 @@ program test_layout
     ! --- images: draw an RGB array, read it back, show it
     call wx_render_png(png, 40, 40, draw_images)
     call wx_image_read_rgb(png, rgb)
+    write(*, '(A,4(3I4,2X))') 'draw_rgb pixels (10,10) (30,10) (10,30) (30,30):', &
+        rgb(:, 10, 10), rgb(:, 30, 10), rgb(:, 10, 30), rgb(:, 30, 30)
     call check(all(rgb(:, 10, 10) == [255, 0, 0]) .and. all(rgb(:, 30, 10) == [0, 255, 0]), &
                'draw_rgb: top row of the scaled image')
     call check(all(rgb(:, 10, 30) == [0, 0, 255]) .and. all(rgb(:, 30, 30) == [255, 255, 0]), &
                'draw_rgb: bottom row, nearest-neighbor scaling')
     call wx_render_png(png2, 80, 40, draw_images, data=png_name)
     call wx_image_read_rgb(png2, rgb)
+    write(*, '(A,2(3I4,2X))') 'draw_image_file pixels (55,5) (65,15):', rgb(:, 55, 5), rgb(:, 65, 15)
     call check(all(rgb(:, 55, 5) == [255, 0, 0]) .and. all(rgb(:, 65, 15) == [255, 255, 0]), &
                'draw_image_file scaled into its box')
     view = wx_static_bitmap(frame, file=png)

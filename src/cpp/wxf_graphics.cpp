@@ -10,6 +10,7 @@
 #include <wx/dcmemory.h>
 #include <wx/image.h>
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -216,6 +217,24 @@ WXF_API int wxf_bitmap_destroy(int64_t h) {
     WXF_CATCH
 }
 
+void wxf_draw_bitmap_scaled(wxGraphicsContext *gc, const wxBitmap &bmp, double x, double y, double w, double h,
+                            bool smooth) {
+    const wxInterpolationQuality old = gc->GetInterpolationQuality();
+    gc->SetInterpolationQuality(smooth ? wxINTERPOLATION_GOOD : wxINTERPOLATION_NONE);
+    // the box in the bitmap's own pixels (a high-DPI bitmap has `scale`
+    // pixels per logical pixel: keep that resolution)
+    const double scale = bmp.GetScaleFactor() > 0 ? bmp.GetScaleFactor() : 1.0;
+    const int tw = static_cast<int>(std::lround(w * scale));
+    const int th = static_cast<int>(std::lround(h * scale));
+    if (!smooth && tw > 0 && th > 0 && (tw != bmp.GetWidth() || th != bmp.GetHeight())) {
+        const wxImage scaled = bmp.ConvertToImage().Scale(tw, th, wxIMAGE_QUALITY_NEAREST);
+        gc->DrawBitmap(wxBitmap(scaled, -1, scale), x, y, w, h);
+    } else {
+        gc->DrawBitmap(bmp, x, y, w, h);
+    }
+    gc->SetInterpolationQuality(old);
+}
+
 // Draw bitmap `b` scaled into the box (x, y, w, h); w, h <= 0: its logical size.
 WXF_API int wxf_gc_draw_bitmap(void *p, int64_t b, double x, double y, double w, double h, int smooth) {
     WXF_TRY
@@ -226,10 +245,7 @@ WXF_API int wxf_gc_draw_bitmap(void *p, int64_t b, double x, double y, double w,
         w = bmp->GetLogicalWidth();
         h = bmp->GetLogicalHeight();
     }
-    const wxInterpolationQuality old = gc->GetInterpolationQuality();
-    gc->SetInterpolationQuality(smooth ? wxINTERPOLATION_GOOD : wxINTERPOLATION_NONE);
-    gc->DrawBitmap(*bmp, x, y, w, h);
-    gc->SetInterpolationQuality(old);
+    wxf_draw_bitmap_scaled(gc, *bmp, x, y, w, h, smooth != 0);
     return WXF_OK;
     WXF_CATCH
 }

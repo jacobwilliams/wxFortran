@@ -40,6 +40,12 @@ void wxf_dispatch_draw(int slot, wxfDrawEvent &ev);
 // Saves `bitmap` as PNG at `path`; returns a status.
 int wxf_save_png(const wxBitmap &bitmap, const wxString &path);
 
+// Draw `bmp` scaled into the box (x, y, w, h). Without `smooth`, pixels stay
+// crisp blocks: the image is scaled here with nearest-neighbor sampling (the
+// cairo backend ignores wxINTERPOLATION_NONE and would blur it).
+void wxf_draw_bitmap_scaled(wxGraphicsContext *gc, const wxBitmap &bmp, double x, double y, double w, double h,
+                            bool smooth);
+
 // wxColour from 0-255 components.
 inline wxColour wxf_color(int r, int g, int b, int a) {
     auto c = [](int v) { return static_cast<unsigned char>(v < 0 ? 0 : (v > 255 ? 255 : v)); };

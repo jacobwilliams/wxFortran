@@ -530,10 +530,7 @@ WXF_API int wxf_gc_draw_rgb(void *p, const unsigned char *rgb, int w, int ht, do
     wxGraphicsContext *gc = wxf_live_graphics(p);
     if (!gc) return wxf_fail(WXF_ERR_STATE, "graphics used outside of its paint handler");
     if (w <= 0 || ht <= 0) return wxf_fail(WXF_ERR_ARGUMENT, "image size must be positive");
-    const wxInterpolationQuality old = gc->GetInterpolationQuality();
-    gc->SetInterpolationQuality(smooth ? wxINTERPOLATION_GOOD : wxINTERPOLATION_NONE);
-    gc->DrawBitmap(wxBitmap(rgb_image(rgb, w, ht)), x, y, bw, bh);
-    gc->SetInterpolationQuality(old);
+    wxf_draw_bitmap_scaled(gc, wxBitmap(rgb_image(rgb, w, ht)), x, y, bw, bh, smooth != 0);
     return WXF_OK;
     WXF_CATCH
 }

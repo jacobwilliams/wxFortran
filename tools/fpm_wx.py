@@ -111,9 +111,23 @@ def pixbuf_loader_cache():
                                       env=dict(os.environ, GDK_PIXBUF_MODULEDIR=dirs[0]))
     except (OSError, subprocess.CalledProcessError):
         return None
+    # A relocatable gdk-pixbuf writes module paths relative to its prefix
+    # (or bin/), which GTK would resolve against the running program: make
+    # them absolute.
+    bindir = os.path.dirname(os.path.realpath(query))
+    lines = []
+    for line in out.splitlines():
+        s = line.strip()
+        if s.startswith('"') and s.endswith('.so"') and not os.path.isabs(s[1:-1]):
+            rel = s[1:-1]
+            path = os.path.normpath(os.path.join(prefix, rel))
+            if not os.path.exists(path):
+                path = os.path.normpath(os.path.join(bindir, rel))
+            line = '"' + path + '"'
+        lines.append(line)
     os.makedirs(os.path.dirname(cache), exist_ok=True)
     with open(cache, "w") as f:
-        f.write(out)
+        f.write("\n".join(lines) + "\n")
     return cache
 
 
