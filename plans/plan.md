@@ -89,11 +89,9 @@ pixi.lock                 # reproducible environment
 fpm.toml                  # library metadata, Fortran settings, link configuration
 src/
   wx.f90                  # umbrella module
-  core/                   # application, base object, strings, errors
-  gui/                    # events, colors, fonts, drawing
-  widgets/                # windows, controls, layouts, dialogs
-  c/                      # private bind(C) interfaces
-  shim/                   # C++ C-ABI bridge
+  wx_*.f90                # public modules: core, events, drawing, windows, controls, dialogs
+  wx_c_*.f90              # private bind(C) interfaces
+  cpp/                    # C++ C-ABI bridge
 test/                     # focused Fortran API and behavior tests
 example/                  # small runnable GUI applications
 tools/                    # only necessary build, generation, and lint helpers

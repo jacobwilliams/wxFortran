@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the timer and menu parts of the C++ shim
-!> (src/shim/wxf_timer.cpp, src/shim/wxf_menus.cpp), and their constants.
+!> (src/cpp/wxf_timer.cpp, src/cpp/wxf_menus.cpp), and their constants.
 module wx_c_menus
 
     use iso_c_binding
@@ -11,7 +11,7 @@ module wx_c_menus
     integer(c_int), parameter, public :: wxITEM_CHECK = 1    !! a check item (toggles)
     integer(c_int), parameter, public :: wxITEM_RADIO = 2    !! a radio item (one of a group)
 
-    ! stock ids (wxWidgets' own values, checked in src/shim/wxf_menus.cpp): a
+    ! stock ids (wxWidgets' own values, checked in src/cpp/wxf_menus.cpp): a
     ! stock menu item gets the standard label, accelerator and, on macOS, its
     ! place in the application menu (wxID_EXIT, wxID_ABOUT, wxID_PREFERENCES)
     integer(c_int), parameter, public :: wxID_OPEN = 5000         !! Open

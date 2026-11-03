@@ -21,12 +21,12 @@
 #include <string>
 #include <vector>
 
-// Styles and button ids: must match the parameters in src/c/wx_c_dialogs.f90.
+// Styles and button ids: must match the parameters in src/wx_c_dialogs.f90.
 static_assert(wxOK == 4 && wxCANCEL == 16 && wxYES == 2 && wxNO == 8 && wxYES_NO == 10 &&
                   wxICON_WARNING == 256 && wxICON_ERROR == 512 && wxICON_QUESTION == 1024 &&
                   wxICON_INFORMATION == 2048 && wxID_OK == 5100 && wxID_CANCEL == 5101 &&
                   wxID_YES == 5103 && wxID_NO == 5104,
-              "wxWidgets dialog constants changed: update src/c/wx_c_dialogs.f90");
+              "wxWidgets dialog constants changed: update src/wx_c_dialogs.f90");
 
 namespace {
 

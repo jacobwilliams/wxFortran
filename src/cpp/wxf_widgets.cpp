@@ -108,7 +108,7 @@ WXF_API int wxf_button_post_click(int64_t h) {
 // ---------------------------------------------------------------------------
 // wxTextCtrl
 
-// Style bits: must match WX_TE_* in src/widgets/wx_c_widgets.f90.
+// Style bits: must match WX_TE_* in src/wx_c_widgets.f90.
 enum { WXF_TE_MULTILINE = 1, WXF_TE_PROCESS_ENTER = 2, WXF_TE_READONLY = 4, WXF_TE_PASSWORD = 8 };
 
 WXF_API int wxf_text_ctrl_create(int64_t parent, const char *value, int len, int style,
@@ -216,7 +216,7 @@ WXF_API int wxf_check_box_emit_click(int64_t h) {
 // it to another sizer, which then own it; or destroy it with
 // wxf_sizer_destroy. A sizer handle is valid while its owner chain is alive.
 
-// Item flags: must match WX_* sizer flags in src/widgets/wx_c_widgets.f90.
+// Item flags: must match WX_* sizer flags in src/wx_c_widgets.f90.
 enum {
     WXF_EXPAND = 1, WXF_ALL = 2, WXF_LEFT = 4, WXF_RIGHT = 8, WXF_TOP = 16, WXF_BOTTOM = 32,
     WXF_ALIGN_CENTER = 64, WXF_ALIGN_RIGHT = 128, WXF_ALIGN_BOTTOM = 256,

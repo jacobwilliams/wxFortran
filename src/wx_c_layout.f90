@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the containers and layout part of the
-!> C++ shim (src/shim/wxf_layout.cpp). Page indices are 1-based (0: none).
+!> C++ shim (src/cpp/wxf_layout.cpp). Page indices are 1-based (0: none).
 module wx_c_layout
 
     use iso_c_binding

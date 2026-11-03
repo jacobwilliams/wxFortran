@@ -1093,7 +1093,7 @@ WXF_API int wxf_window_has_capture(int64_t h, int *has) {
     WXF_CATCH
 }
 
-// Cursor shown over the window: must match WX_CURSOR_* in src/c/wx_c_core.f90.
+// Cursor shown over the window: must match WX_CURSOR_* in src/wx_c_core.f90.
 WXF_API int wxf_window_set_cursor(int64_t h, int kind) {
     WXF_TRY
     WXF_GET(wxWindow, w, h);

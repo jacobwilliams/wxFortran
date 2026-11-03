@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the core of the C++ shim
-!> (src/shim/wxf_core.cpp), and the constants shared with it.
+!> (src/cpp/wxf_core.cpp), and the constants shared with it.
 !>
 !> Handles are `integer(c_int64_t)` (0 is "no object"). Unless noted, every
 !> function returns a status: `WX_OK` (0) or one of the `WX_ERR_*` codes.
@@ -11,7 +11,7 @@ module wx_c_core
     implicit none
     private
 
-    ! status codes: must match `enum wxf_status` in src/shim/wxf_common.h
+    ! status codes: must match `enum wxf_status` in src/cpp/wxf_common.h
     integer(c_int), parameter, public :: WX_OK = 0                   !! success
     integer(c_int), parameter, public :: WX_ERR_INVALID_HANDLE = 1   !! null, unknown or destroyed object
     integer(c_int), parameter, public :: WX_ERR_NO_APP = 2           !! the application is not initialized
@@ -20,7 +20,7 @@ module wx_c_core
     integer(c_int), parameter, public :: WX_ERR_FAILED = 5           !! wxWidgets reported failure
     integer(c_int), parameter, public :: WX_ERR_EXCEPTION = 6        !! C++ exception caught in the shim
 
-    ! event kinds: must match `enum wxf_event_kind` in src/shim/wxf_common.h
+    ! event kinds: must match `enum wxf_event_kind` in src/cpp/wxf_common.h
     integer(c_int), parameter, public :: wxEVT_BUTTON = 1        !! a button was clicked
     integer(c_int), parameter, public :: wxEVT_TEXT = 2          !! the text of a text control changed
     integer(c_int), parameter, public :: wxEVT_TEXT_ENTER = 3    !! Enter pressed in a text control (`wxTE_PROCESS_ENTER`)
@@ -53,7 +53,7 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_RIGHT_UP = 28     !! right mouse button released
     integer(c_int), parameter, public :: wxEVT_MOUSE_CAPTURE_LOST = 29 !! the mouse capture was taken away
 
-    ! cursors: must match wxf_window_set_cursor in src/shim/wxf_core.cpp
+    ! cursors: must match wxf_window_set_cursor in src/cpp/wxf_core.cpp
     integer(c_int), parameter, public :: WX_CURSOR_ARROW = 0      !! the normal arrow
     integer(c_int), parameter, public :: WX_CURSOR_CROSS = 1      !! a crosshair
     integer(c_int), parameter, public :: WX_CURSOR_HAND = 2       !! a pointing hand
@@ -64,7 +64,7 @@ module wx_c_core
 
     integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 
-    ! modifier key bits: must match WXF_MOD_* in src/shim/wxf_common.h
+    ! modifier key bits: must match WXF_MOD_* in src/cpp/wxf_common.h
     integer(c_int), parameter, public :: WX_MOD_SHIFT = 1    !! Shift held
     integer(c_int), parameter, public :: WX_MOD_CONTROL = 2  !! Control held (Cmd on macOS)
     integer(c_int), parameter, public :: WX_MOD_ALT = 4      !! Alt (Option) held

@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the item and value controls of the C++
-!> shim (src/shim/wxf_controls.cpp). Item indices are 1-based (0: none).
+!> shim (src/cpp/wxf_controls.cpp). Item indices are 1-based (0: none).
 module wx_c_controls
 
     use iso_c_binding

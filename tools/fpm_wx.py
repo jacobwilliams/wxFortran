@@ -8,7 +8,7 @@ Usage:
     python fpm_wx.py --env                         print `export ...` lines; then plain
                                                    `fpm build` works in that shell
 
-fpm compiles the C++ shim (src/shim/*.cpp) as part of the wxFortran library.
+fpm compiles the C++ shim (src/cpp/*.cpp) as part of the wxFortran library.
 This script supplies the machine-specific settings through fpm's standard
 environment variables, from `wx-config`:
     FPM_CXX       clang++ (macOS) / g++

@@ -11,7 +11,7 @@ auto-executables = true
 auto-tests = true
 auto-examples = true
 module-naming = false
-# The C++ shim in src/shim is compiled by fpm. The C++ compiler, wxWidgets
+# The C++ shim in src/cpp is compiled by fpm. The C++ compiler, wxWidgets
 # include flags and libraries come from FPM_CXX / FPM_CXXFLAGS / FPM_LDFLAGS
 # (from `wx-config`): see tools/fpm_wx.py and the README.
 

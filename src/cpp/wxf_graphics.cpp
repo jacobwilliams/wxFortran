@@ -17,14 +17,14 @@
 
 wxDEFINE_EVENT(wxfEVT_DRAW, wxfDrawEvent);
 
-// Key codes: must match the WXK_* parameters in src/c/wx_c_core.f90.
+// Key codes: must match the WXK_* parameters in src/wx_c_core.f90.
 static_assert(WXK_BACK == 8 && WXK_TAB == 9 && WXK_RETURN == 13 && WXK_ESCAPE == 27 &&
                   WXK_SPACE == 32 && WXK_DELETE == 127 && WXK_END == 312 && WXK_HOME == 313 &&
                   WXK_LEFT == 314 && WXK_UP == 315 && WXK_RIGHT == 316 && WXK_DOWN == 317 &&
                   WXK_F1 == 340 && WXK_PAGEUP == 366 && WXK_PAGEDOWN == 367,
-              "wxWidgets key codes changed: update src/c/wx_c_core.f90");
+              "wxWidgets key codes changed: update src/wx_c_core.f90");
 
-// Pen styles and font families: must match src/c/wx_c_graphics.f90.
+// Pen styles and font families: must match src/wx_c_graphics.f90.
 enum { WXF_PEN_SOLID = 0, WXF_PEN_DOT = 1, WXF_PEN_LONG_DASH = 2, WXF_PEN_SHORT_DASH = 3 };
 enum { WXF_FONT_DEFAULT = 0, WXF_FONT_SANS = 1, WXF_FONT_SERIF = 2, WXF_FONT_MONO = 3 };
 

@@ -51,7 +51,7 @@ pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
 
-The C++ shim in `src/shim` is compiled by fpm as part of the library.
+The C++ shim in `src/cpp` is compiled by fpm as part of the library.
 [tools/fpm_wx.py](tools/fpm_wx.py) runs fpm with the settings it needs, taken
 from `wx-config`: `FPM_CXX`, `FPM_CXXFLAGS` (`wx-config --cxxflags`) and
 `FPM_LDFLAGS` (`wx-config --libs core,base`, plus an rpath). To use plain
@@ -110,9 +110,9 @@ root: `python build/dependencies/wxfortran/tools/fpm_wx.py build`. See
 
 ```text
 Fortran application
-    -> public Fortran modules (src/wx.f90, src/core, src/widgets)
-    -> private bind(C) interfaces (src/c)
-    -> C ABI shim (src/shim, C++)
+    -> public Fortran modules (src/wx.f90, src/wx_*.f90)
+    -> private bind(C) interfaces (src/wx_c_*.f90)
+    -> C ABI shim (src/cpp, C++)
     -> wxWidgets
 ```
 
@@ -323,14 +323,24 @@ failure prints the message and stops the program (`error stop`).
 ## Repository layout
 
 ```text
-src/wx.f90        umbrella module (`use wx`)
-src/core/         wx_base (errors, handles, strings), wx_events, wx_app, wx_timer
-src/gui/          wx_colors, wx_graphics (drawing context, PNG rendering and reading)
-src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, basic controls),
-                  wx_lists, wx_values (more controls), wx_layout (containers, sizers,
-                  toolbar, image view), wx_dialogs, wx_canvas
-src/c/            private bind(C) interfaces to the shim
-src/shim/         C++ C-ABI shim over wxWidgets
+src/              all the Fortran:
+  wx.f90            umbrella module (`use wx`)
+  wx_base.f90       errors, handles, strings
+  wx_events.f90     event handlers, connections, deferred calls
+  wx_app.f90        application and event loop
+  wx_timer.f90      timers
+  wx_colors.f90     colors
+  wx_graphics.f90   drawing context, bitmaps, PNG rendering and reading
+  wx_windows.f90    window base, sizers, mouse capture, cursors
+  wx_menus.f90      menu bars and menus
+  wx_controls.f90   frames and basic controls
+  wx_lists.f90      choice, list box, radio box
+  wx_values.f90     slider, spin controls, gauge
+  wx_layout.f90     notebook, splitter, grid sizers, toolbar, image view
+  wx_dialogs.f90    standard dialogs
+  wx_canvas.f90     canvas
+  wx_c_*.f90        private bind(C) interfaces to the C++ shim
+src/cpp/          C++ C-ABI shim over wxWidgets (wxf_*.cpp, wxf_*.h)
 test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas, dialogs,
                   controls, layout, input (bitmaps, mouse capture, cursors)
 example/          hello, form (menus, status bar, timer), showcase (widgets, events, dialogs),

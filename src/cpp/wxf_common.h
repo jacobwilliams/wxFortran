@@ -24,7 +24,7 @@
 #define WXF_API extern "C" __attribute__((visibility("default")))
 #endif
 
-// Status codes: must match the WX_ERR_* parameters in src/core/wx_c_core.f90.
+// Status codes: must match the WX_ERR_* parameters in src/wx_c_core.f90.
 enum wxf_status : int {
     WXF_OK = 0,
     WXF_ERR_INVALID_HANDLE = 1,   // null, unknown or destroyed object
@@ -35,7 +35,7 @@ enum wxf_status : int {
     WXF_ERR_EXCEPTION = 6,        // a C++ exception was caught at the boundary
 };
 
-// Event kinds: must match the wxEVT_* parameters in src/core/wx_c_core.f90.
+// Event kinds: must match the wxEVT_* parameters in src/wx_c_core.f90.
 enum wxf_event_kind : int {
     WXF_EVT_BUTTON = 1,
     WXF_EVT_TEXT = 2,
@@ -68,7 +68,7 @@ enum wxf_event_kind : int {
     WXF_EVT_MOUSE_CAPTURE_LOST = 29,
 };
 
-// Modifier key bits: must match WX_MOD_* in src/c/wx_c_core.f90.
+// Modifier key bits: must match WX_MOD_* in src/wx_c_core.f90.
 enum { WXF_MOD_SHIFT = 1, WXF_MOD_CONTROL = 2, WXF_MOD_ALT = 4 };
 
 // Fortran callbacks: dispatch(slot, event or null, event kind), release(slot).

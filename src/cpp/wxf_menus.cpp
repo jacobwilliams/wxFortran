@@ -14,13 +14,13 @@
 #include <wx/stockitem.h>
 #include <wx/weakref.h>
 
-// Stock ids: must match the wxID_* parameters in src/c/wx_c_menus.f90.
+// Stock ids: must match the wxID_* parameters in src/wx_c_menus.f90.
 static_assert(wxID_ANY == -1 && wxID_OPEN == 5000 && wxID_CLOSE == 5001 && wxID_NEW == 5002 &&
                   wxID_SAVE == 5003 && wxID_SAVEAS == 5004 && wxID_EXIT == 5006 &&
                   wxID_UNDO == 5007 && wxID_REDO == 5008 && wxID_HELP == 5009 &&
                   wxID_ABOUT == 5014 && wxID_PREFERENCES == 5022 && wxID_CUT == 5031 &&
                   wxID_COPY == 5032 && wxID_PASTE == 5033,
-              "wxWidgets stock ids changed: update src/c/wx_c_menus.f90");
+              "wxWidgets stock ids changed: update src/wx_c_menus.f90");
 
 #define WXF_MENU(var, h) WXF_GET_HANDLER(wxMenu, var, h)
 

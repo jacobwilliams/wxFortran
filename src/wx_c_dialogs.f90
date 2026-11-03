@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the dialogs part of the C++ shim
-!> (src/shim/wxf_dialogs.cpp), and its constants (wxWidgets' own values,
+!> (src/cpp/wxf_dialogs.cpp), and its constants (wxWidgets' own values,
 !> checked in the shim).
 module wx_c_dialogs
 

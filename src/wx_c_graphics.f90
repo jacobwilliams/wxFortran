@@ -1,18 +1,18 @@
 !> Private `bind(C)` interfaces to the drawing part of the C++ shim
-!> (src/shim/wxf_graphics.cpp), and its constants.
+!> (src/cpp/wxf_graphics.cpp), and its constants.
 module wx_c_graphics
 
     use iso_c_binding
     implicit none
     private
 
-    ! pen styles: must match the enum in src/shim/wxf_graphics.cpp
+    ! pen styles: must match the enum in src/cpp/wxf_graphics.cpp
     integer(c_int), parameter, public :: wxPENSTYLE_SOLID = 0       !! continuous line
     integer(c_int), parameter, public :: wxPENSTYLE_DOT = 1         !! dotted line
     integer(c_int), parameter, public :: wxPENSTYLE_LONG_DASH = 2   !! long dashes
     integer(c_int), parameter, public :: wxPENSTYLE_SHORT_DASH = 3  !! short dashes
 
-    ! font families: must match the enum in src/shim/wxf_graphics.cpp
+    ! font families: must match the enum in src/cpp/wxf_graphics.cpp
     integer(c_int), parameter, public :: wxFONTFAMILY_DEFAULT = 0   !! the platform's default font
     integer(c_int), parameter, public :: wxFONTFAMILY_SWISS = 1     !! sans-serif
     integer(c_int), parameter, public :: wxFONTFAMILY_ROMAN = 2     !! serif

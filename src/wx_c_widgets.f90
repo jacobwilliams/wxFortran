@@ -1,5 +1,5 @@
 !> Private `bind(C)` interfaces to the widgets part of the C++ shim
-!> (src/shim/wxf_widgets.cpp), and the style/flag constants shared with it.
+!> (src/cpp/wxf_widgets.cpp), and the style/flag constants shared with it.
 !>
 !> The flag values are wxFortran's own (combine them with `ior` or `+`); the
 !> shim translates them to the wxWidgets values.
@@ -13,7 +13,7 @@ module wx_c_widgets
     integer(c_int), parameter, public :: wxHORIZONTAL = 0   !! lay out items left to right
     integer(c_int), parameter, public :: wxVERTICAL = 1     !! lay out items top to bottom
 
-    ! sizer item flags: must match the enum in src/shim/wxf_widgets.cpp
+    ! sizer item flags: must match the enum in src/cpp/wxf_widgets.cpp
     integer(c_int), parameter, public :: wxEXPAND = 1          !! fill the space across the sizer direction
     integer(c_int), parameter, public :: wxALL = 2             !! border on all sides
     integer(c_int), parameter, public :: wxLEFT = 4            !! border on the left
@@ -24,7 +24,7 @@ module wx_c_widgets
     integer(c_int), parameter, public :: wxALIGN_RIGHT = 128   !! align the item to the right
     integer(c_int), parameter, public :: wxALIGN_BOTTOM = 256  !! align the item to the bottom
 
-    ! text control styles: must match the enum in src/shim/wxf_widgets.cpp
+    ! text control styles: must match the enum in src/cpp/wxf_widgets.cpp
     integer(c_int), parameter, public :: wxTE_MULTILINE = 1       !! multi-line text
     integer(c_int), parameter, public :: wxTE_PROCESS_ENTER = 2   !! generate `wxEVT_TEXT_ENTER`
     integer(c_int), parameter, public :: wxTE_READONLY = 4        !! not editable by the user
