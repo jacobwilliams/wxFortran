@@ -1,0 +1,11 @@
+# A separate fpm project that uses wxFortran as a dependency (CI check that a
+# downstream project can build, link and run against wxWidgets).
+name = "wxfortran_consumer"
+version = "0.0.1"
+
+[dependencies]
+wxfortran = { path = "../.." }
+
+[fortran]
+implicit-typing = false
+implicit-external = false
