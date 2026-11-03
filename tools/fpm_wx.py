@@ -26,11 +26,17 @@ Override the compilers with FPM_FC / FPM_CXX, and the wx-config program with
 WX_CONFIG (e.g. for a system or custom wxWidgets build). FPM_CXXFLAGS and
 FPM_LDFLAGS already set in the environment are kept (appended).
 
+On Linux, `test` and `run` also build the gdk-pixbuf loader cache into
+build/ and point GTK at it (GDK_PIXBUF_MODULE_FILE): conda packages register
+their image loaders (e.g. librsvg's, for SVG theme icons such as radio
+button bullets) with install scripts, which pixi does not run.
+
 On Linux without a display (e.g. CI), `test` runs under `xvfb-run` if it is
 installed (with NO_AT_BRIDGE=1: there is no accessibility bus to connect
 to); set WXF_NO_XVFB=1 to disable this.
 """
 
+import glob
 import os
 import shlex
 import shutil
@@ -83,6 +89,34 @@ def settings():
     return env
 
 
+def pixbuf_loader_cache():
+    """Linux: write a gdk-pixbuf loader cache for the active environment to
+    build/ (if missing or older than the loaders); return its path or None."""
+    prefix = os.environ.get("CONDA_PREFIX")
+    query = shutil.which("gdk-pixbuf-query-loaders")
+    if not (LINUX and prefix and query):
+        return None
+    dirs = glob.glob(os.path.join(prefix, "lib", "gdk-pixbuf-2.0", "*", "loaders"))
+    if not dirs:
+        return None
+    loaders = glob.glob(os.path.join(dirs[0], "*.so"))
+    if not loaders:
+        return None
+    cache = os.path.join(os.getcwd(), "build", "gdk-pixbuf-loaders.cache")
+    newest = max(os.path.getmtime(f) for f in loaders)
+    if os.path.exists(cache) and os.path.getmtime(cache) >= newest:
+        return cache
+    try:
+        out = subprocess.check_output([query, *loaders], text=True,
+                                      env=dict(os.environ, GDK_PIXBUF_MODULEDIR=dirs[0]))
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    os.makedirs(os.path.dirname(cache), exist_ok=True)
+    with open(cache, "w") as f:
+        f.write(out)
+    return cache
+
+
 def run(cmd, env=None):
     print("+", " ".join(cmd), flush=True)
     return subprocess.call(cmd, env=env)
@@ -109,6 +143,10 @@ def main():
             omp = ["--profile", "release", *omp]
         args = [*omp, *args]
     cmd = ["fpm", sys.argv[1], "--compiler", fc, *args]
+    if sys.argv[1] in ("test", "run"):
+        cache = pixbuf_loader_cache()
+        if cache:
+            env.setdefault("GDK_PIXBUF_MODULE_FILE", cache)
     headless = LINUX and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
     if sys.argv[1] in ("test", "run") and headless and not os.environ.get("WXF_NO_XVFB"):
         if shutil.which("xvfb-run"):

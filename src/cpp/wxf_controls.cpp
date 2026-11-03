@@ -121,12 +121,14 @@ WXF_API int wxf_items_set_string(int64_t h, int i, const char *s, int len) {
 WXF_API int wxf_items_get_selection(int64_t h, int *i) {
     WXF_TRY
     WXF_ITEMS(c, w, h);
-    int sel = c->GetSelection();
-    if (auto *l = dynamic_cast<wxListBox *>(w)) {
-        if (l->HasMultipleSelection()) {
-            wxArrayInt all;
-            sel = l->GetSelections(all) > 0 ? all[0] : wxNOT_FOUND;
-        }
+    int sel;
+    auto *l = dynamic_cast<wxListBox *>(w);
+    if (l && l->HasMultipleSelection()) {
+        // GetSelection() is for single-selection list boxes only (GTK asserts)
+        wxArrayInt all;
+        sel = l->GetSelections(all) > 0 ? all[0] : wxNOT_FOUND;
+    } else {
+        sel = c->GetSelection();
     }
     *i = sel == wxNOT_FOUND ? 0 : sel + 1;
     return WXF_OK;
