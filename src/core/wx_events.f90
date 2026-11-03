@@ -36,6 +36,8 @@ module wx_events
     public :: WX_MOD_SHIFT, WX_MOD_CONTROL, WX_MOD_ALT
     public :: WXK_BACK, WXK_TAB, WXK_RETURN, WXK_ESCAPE, WXK_SPACE, WXK_DELETE, WXK_END
     public :: WXK_HOME, WXK_LEFT, WXK_UP, WXK_RIGHT, WXK_DOWN, WXK_F1, WXK_PAGEUP, WXK_PAGEDOWN
+    public :: wxEVT_CHOICE, wxEVT_LISTBOX, wxEVT_LISTBOX_DCLICK, wxEVT_SLIDER, wxEVT_SPINCTRL
+    public :: wxEVT_RADIOBOX, wxEVT_SPINCTRLDOUBLE
     public :: wx_events_slot_new, wx_events_slot_free
     public :: wx_event_handler, wx_callback
     public :: wx_call_after, wx_active_handlers
@@ -63,6 +65,8 @@ module wx_events
         procedure :: get_key_code => wx_event_get_key_code
         procedure :: get_unicode_key => wx_event_get_unicode_key
         procedure :: get_modifiers => wx_event_get_modifiers
+        procedure :: get_selection => wx_event_get_selection
+        procedure :: get_double => wx_event_get_double
         procedure :: c_event => wx_event_c_event
     end type wx_event
 
@@ -468,6 +472,28 @@ contains
         call wx_check(wxf_event_get_modifiers(self%p, v), stat)
         wx_event_get_modifiers = v
     end function wx_event_get_modifiers
+
+    !> Choice, list box and radio box events: the item chosen (1-based; 0:
+    !> none). `event%get_string()` gives its text.
+    integer function wx_event_get_selection(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: v
+        v = 0
+        call wx_check(wxf_event_get_selection(self%p, v), stat)
+        wx_event_get_selection = v
+    end function wx_event_get_selection
+
+    !> `wx_spin_ctrl_double` events: the new value. (Integer controls: use
+    !> `get_int`.)
+    real(c_double) function wx_event_get_double(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        real(c_double) :: v
+        v = 0
+        call wx_check(wxf_event_get_double(self%p, v), stat)
+        wx_event_get_double = v
+    end function wx_event_get_double
 
     !> The shim's event pointer (for wxFortran's own modules, e.g. `wx_graphics(event)`).
     type(c_ptr) function wx_event_c_event(self)

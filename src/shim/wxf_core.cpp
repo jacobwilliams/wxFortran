@@ -6,6 +6,7 @@
 #include "wxf_graphics.h"
 
 #include <wx/init.h>
+#include <wx/spinctrl.h>
 #include <wx/tracker.h>
 #include <wx/weakref.h>
 
@@ -56,6 +57,29 @@ void wxf_out_str(const wxString &s, char **out, int *len) {
     *out = static_cast<char *>(std::malloc(n + 1));
     std::memcpy(*out, b.data(), n);
     (*out)[n] = '\0';
+}
+
+wxArrayString wxf_strings(const char *s, int itemlen, int n) {
+    wxArrayString list;
+    for (int i = 0; i < n; ++i) {
+        const char *item = s + static_cast<size_t>(i) * static_cast<size_t>(itemlen);
+        int len = itemlen;
+        while (len > 0 && item[len - 1] == ' ') --len;
+        list.Add(wxf_str(item, len));
+    }
+    return list;
+}
+
+void wxf_out_strings(const wxArrayString &list, char **out, int *len) {
+    std::string all;
+    for (const wxString &s : list) {
+        all += s.utf8_str().data();
+        all += '\0';
+    }
+    *len = static_cast<int>(all.size());
+    *out = static_cast<char *>(std::malloc(all.size() + 1));
+    std::memcpy(*out, all.data(), all.size());
+    (*out)[all.size()] = '\0';
 }
 
 WXF_API void wxf_free(void *p) { std::free(p); }
@@ -464,6 +488,13 @@ template <class F> bool with_event_tag(int kind, F f) {
     case WXF_EVT_KEY_DOWN: f(wxEVT_KEY_DOWN); return true;
     case WXF_EVT_LEFT_DCLICK: f(wxEVT_LEFT_DCLICK); return true;
     case WXF_EVT_LEAVE_WINDOW: f(wxEVT_LEAVE_WINDOW); return true;
+    case WXF_EVT_CHOICE: f(wxEVT_CHOICE); return true;
+    case WXF_EVT_LISTBOX: f(wxEVT_LISTBOX); return true;
+    case WXF_EVT_LISTBOX_DCLICK: f(wxEVT_LISTBOX_DCLICK); return true;
+    case WXF_EVT_SLIDER: f(wxEVT_SLIDER); return true;
+    case WXF_EVT_SPINCTRL: f(wxEVT_SPINCTRL); return true;
+    case WXF_EVT_RADIOBOX: f(wxEVT_RADIOBOX); return true;
+    case WXF_EVT_SPINCTRLDOUBLE: f(wxEVT_SPINCTRLDOUBLE); return true;
     default: return false;
     }
 }
@@ -664,6 +695,29 @@ WXF_API int wxf_event_get_string(void *e, char **s, int *len) {
     auto *c = dynamic_cast<wxCommandEvent *>(ev);
     if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a command event");
     wxf_out_str(c->GetString(), s, len);
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Choice, list box and radio box events: the item (1-based; 0: none).
+WXF_API int wxf_event_get_selection(void *e, int *index) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *c = dynamic_cast<wxCommandEvent *>(ev);
+    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a command event");
+    const int sel = c->GetSelection();
+    *index = sel < 0 ? 0 : sel + 1;
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Real-valued spin control events: the new value.
+WXF_API int wxf_event_get_double(void *e, double *value) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *s = dynamic_cast<wxSpinDoubleEvent *>(ev);
+    if (!s) return wxf_fail(WXF_ERR_ARGUMENT, "not a real-valued spin control event");
+    *value = s->GetValue();
     return WXF_OK;
     WXF_CATCH
 }

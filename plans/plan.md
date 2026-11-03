@@ -201,8 +201,12 @@ callback unbinding, parent destruction, and repeated creation/destruction.
 `test/test_timer.f90`, `test/test_menus.f90` and the form example. Basic
 drawing: `wx_canvas`, `wx_graphics` (wxGraphicsContext), mouse/key events,
 PNG save/render/read, with `test/test_canvas.f90` and `example/plot.f90`.
-Next: standard dialogs, more controls, OpenGL (`wxGLCanvas`), and possibly a
-reusable plotting module distilled from the plot example.
+Standard dialogs (message, file open/save, directory, text entry, choice,
+color, About) with scripted answers for tests, and list/value controls
+(choice, list box, radio box, slider, spin controls, gauge), with
+`test/test_dialogs.f90`, `test/test_controls.f90` and the showcase
+example. Next: OpenGL (`wxGLCanvas`), and possibly a reusable plotting
+module distilled from the plot example.
 
 - Prioritize menus/actions, standard dialogs, status bars, common controls,
   sizers, and basic drawing based on example applications and user demand.

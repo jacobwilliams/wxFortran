@@ -4,7 +4,7 @@
 !> * Left drag: pan vertically. Double-click or R: reset the view.
 !> * Wheel: zoom the value axis around the cursor; Shift+wheel: zoom time.
 !> * Space (or View > Pause): pause. C: clear markers.
-!> * File > Save image (Ctrl+S): write plot.png. The status bar shows the
+!> * File > Save image (Ctrl+S): choose a PNG file to save. The status bar shows the
 !>   data coordinates under the cursor.
 !>
 !> `plot --screenshot out.png` fills the plot, saves it to out.png and exits.
@@ -323,7 +323,7 @@ contains
         call p%canvas%refresh()
     end subroutine clear_markers
 
-    !> Save the plot as plot.png (or the --screenshot file).
+    !> Save the plot as a PNG file.
     subroutine save_image(p, filename)
         type(plot_t), intent(inout) :: p
         character(len=*), intent(in) :: filename
@@ -433,11 +433,20 @@ contains
         type(wx_event), intent(inout) :: event
         class(*), intent(inout), optional :: data
         logical :: closed
+        character(len=:), allocatable :: path
         select type (p => data)
         type is (plot_t)
             select case (event%get_id())
             case (wxID_SAVE)
-                call save_image(p, 'plot.png')
+                if (wx_file_save_dialog(path, message='Save the plot', default_file='plot.png', &
+                                        wildcard='PNG images (*.png)|*.png', parent=p%frame)) then
+                    if (len(path) < 4) then
+                        path = path//'.png'
+                    else if (path(len(path)-3:) /= '.png' .and. path(len(path)-3:) /= '.PNG') then
+                        path = path//'.png'
+                    end if
+                    call save_image(p, path)
+                end if
             case (wxID_EXIT)
                 closed = p%frame%close()
             case default
@@ -495,7 +504,7 @@ program plot
     ! menus
     bar = wx_menu_bar()
     file_menu = wx_menu()
-    id = file_menu%append(id=wxID_SAVE, text='&Save image'//achar(9)//'Ctrl+S', help='Save the plot as plot.png')
+    id = file_menu%append(id=wxID_SAVE, text='&Save image'//achar(9)//'Ctrl+S', help='Save the plot as a PNG image')
     call file_menu%append_separator()
     id = file_menu%append(id=wxID_EXIT)
     p%view_menu = wx_menu()

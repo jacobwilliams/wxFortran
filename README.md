@@ -30,9 +30,10 @@ end program hello
 **Status:** early development (see [plans/plan.md](plans/plan.md)). Phases 0–2
 are in place: application and event loop, frames, panels, static text,
 buttons, text controls, check boxes, box sizers, and typed events with a
-tested lifetime contract. Phase 3 has started with timers, menus, status
-bars, and 2D drawing (a canvas with mouse/key input and anti-aliased
-graphics, saved to PNG). The API may still change.
+tested lifetime contract. Phase 3 adds timers, menus, status bars, 2D
+drawing (a canvas with mouse/key input and anti-aliased graphics, saved to
+PNG), the standard dialogs, and list and value controls (choice, list box,
+radio box, slider, spin controls, gauge). The API may still change.
 
 ## Building
 
@@ -43,7 +44,7 @@ clean checkout:
 pixi install            # gfortran 15, fpm, C++ compiler, wxWidgets 3.3 (conda-forge)
 pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
-pixi run example hello  # or: form, showcase (widgets/events, for testing by hand), plot
+pixi run example hello  # or: form, showcase (widgets, events, dialogs: testing by hand), plot
 pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
@@ -207,6 +208,39 @@ failure prints the message and stops the program (`error stop`).
 * A failed wxWidgets assertion (a usage error inside wxWidgets) is printed on
   stderr and recorded as the last error. It does not open a dialog.
 
+### Controls
+
+* `wx_choice`, `wx_list_box` (optionally multiple selection) and
+  `wx_radio_box` take their items as a character array, with trailing blanks
+  ignored: `wx_choice(panel, [character(len=8) :: 'red', 'green'])`. Items
+  are numbered from 1, and a selection of 0 means none. Their events
+  (`wxEVT_CHOICE`, `wxEVT_LISTBOX`, `wxEVT_LISTBOX_DCLICK`,
+  `wxEVT_RADIOBOX`) carry the item in `event%get_selection()` and its text in
+  `event%get_string()`.
+* `wx_slider`, `wx_spin_ctrl` (integer), `wx_spin_ctrl_double` (real) and
+  `wx_gauge` (progress bar). Their events are `wxEVT_SLIDER`,
+  `wxEVT_SPINCTRL` and `wxEVT_SPINCTRLDOUBLE`. Read the new value with
+  `event%get_int()`, or `get_double()` for the real spin control.
+* Setting a value from code (`set_value`, `set_selection`) sends no event.
+  `emit_select` and `emit_change` do, for tests.
+
+### Dialogs
+
+* `wx_message_box` (returns `wxID_OK`, `wxID_CANCEL`, `wxID_YES` or
+  `wxID_NO`), `wx_file_open_dialog`, `wx_file_open_multiple_dialog`,
+  `wx_file_save_dialog`, `wx_dir_dialog`, `wx_text_entry_dialog`,
+  `wx_choice_dialog`, `wx_color_dialog` and `wx_about_box`. Each dialog
+  except the message box and the About box returns `.true.` if the user
+  accepted.
+* They are modal: they run their own event loop until answered, so timers
+  and other windows keep working meanwhile.
+* Testing: `wx_queue_dialog_answer(button=, text=, path=, paths=, index=,
+  color=)` scripts the next dialog's answer, and that dialog then returns at
+  once without appearing. `wx_set_dialog_test_mode(.true.)` makes a dialog
+  without a queued answer fail with `WX_ERR_STATE` instead of waiting for a
+  user. `wx_last_dialog(kind, caption, message)` reports what the last dialog
+  showed.
+
 ### Drawing
 
 * A `wx_canvas` is a window drawn by its `wxEVT_PAINT` handlers. In the
@@ -241,11 +275,12 @@ failure prints the message and stops the program (`error stop`).
 src/wx.f90        umbrella module (`use wx`)
 src/core/         wx_base (errors, handles, strings), wx_events, wx_app, wx_timer
 src/gui/          wx_colors, wx_graphics (drawing context, PNG rendering and reading)
-src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, controls), wx_canvas
+src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, basic controls),
+                  wx_lists, wx_values (more controls), wx_dialogs, wx_canvas
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
-test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas
-example/          hello, form (menus, status bar, timer), showcase (widgets and events), plot (drawing)
+test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas, dialogs, controls
+example/          hello, form (menus, status bar, timer), showcase (widgets, events, dialogs), plot (drawing)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap

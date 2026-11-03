@@ -55,6 +55,13 @@ enum wxf_event_kind : int {
     WXF_EVT_KEY_DOWN = 16,
     WXF_EVT_LEFT_DCLICK = 17,
     WXF_EVT_LEAVE_WINDOW = 18,
+    WXF_EVT_CHOICE = 19,
+    WXF_EVT_LISTBOX = 20,
+    WXF_EVT_LISTBOX_DCLICK = 21,
+    WXF_EVT_SLIDER = 22,
+    WXF_EVT_SPINCTRL = 23,
+    WXF_EVT_RADIOBOX = 24,
+    WXF_EVT_SPINCTRLDOUBLE = 25,
 };
 
 // Modifier key bits: must match WX_MOD_* in src/c/wx_c_core.f90.
@@ -140,5 +147,13 @@ inline wxString wxf_str(const char *s, int len) {
 
 // Return a wxString to Fortran as a malloc'd UTF-8 buffer (released by wxf_free).
 void wxf_out_str(const wxString &s, char **out, int *len);
+
+// A Fortran character array (n items of `itemlen` bytes, blank padded) as a
+// string list, trailing blanks removed from each item.
+wxArrayString wxf_strings(const char *s, int itemlen, int n);
+
+// Return a string list to Fortran as one malloc'd buffer of NUL-terminated
+// UTF-8 strings (`len`: total bytes; released by wxf_free).
+void wxf_out_strings(const wxArrayString &list, char **out, int *len);
 
 inline int wxf_bool(bool b) { return b ? 1 : 0; }

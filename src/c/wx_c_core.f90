@@ -40,6 +40,13 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_KEY_DOWN = 16     !! key pressed (in the focused window)
     integer(c_int), parameter, public :: wxEVT_LEFT_DCLICK = 17  !! left button double-clicked
     integer(c_int), parameter, public :: wxEVT_LEAVE_WINDOW = 18 !! mouse left the window
+    integer(c_int), parameter, public :: wxEVT_CHOICE = 19       !! an item of a wx_choice was chosen
+    integer(c_int), parameter, public :: wxEVT_LISTBOX = 20      !! an item of a wx_list_box was selected
+    integer(c_int), parameter, public :: wxEVT_LISTBOX_DCLICK = 21 !! an item of a wx_list_box was double-clicked
+    integer(c_int), parameter, public :: wxEVT_SLIDER = 22       !! a wx_slider moved
+    integer(c_int), parameter, public :: wxEVT_SPINCTRL = 23     !! a wx_spin_ctrl value changed
+    integer(c_int), parameter, public :: wxEVT_RADIOBOX = 24     !! a wx_radio_box selection changed
+    integer(c_int), parameter, public :: wxEVT_SPINCTRLDOUBLE = 25 !! a wx_spin_ctrl_double value changed
 
     integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 
@@ -66,6 +73,7 @@ module wx_c_core
     integer(c_int), parameter, public :: WXK_PAGEDOWN = 367  !! Page Down
 
     public :: wxf_set_error
+    public :: wxf_event_get_selection, wxf_event_get_double
     public :: wxf_last_error, wxf_clear_error, wxf_free, wxf_is_valid, wxf_live_count
     public :: wxf_app_init, wxf_app_run, wxf_app_exit_main_loop, wxf_app_is_main_loop_running
     public :: wxf_app_process_pending, wxf_app_set_exit_on_frame_delete, wxf_app_cleanup
@@ -621,6 +629,27 @@ module wx_c_core
             integer(c_int), value :: mods
             integer(c_int) :: r
         end function wxf_window_emit_key
+
+
+        !> Selected item (1-based) of a list control event.
+        function wxf_event_get_selection(e, index) &
+                bind(C, name='wxf_event_get_selection') result(r)
+            import :: c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            integer(c_int), intent(out) :: index
+            integer(c_int) :: r
+        end function wxf_event_get_selection
+
+        !> Value of a real-valued spin control event.
+        function wxf_event_get_double(e, value) &
+                bind(C, name='wxf_event_get_double') result(r)
+            import :: c_double, c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            real(c_double), intent(out) :: value
+            integer(c_int) :: r
+        end function wxf_event_get_double
 
     end interface
 

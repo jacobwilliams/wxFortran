@@ -28,6 +28,12 @@ module wx_base
     public :: WX_ERR_ARGUMENT, WX_ERR_FAILED, WX_ERR_EXCEPTION
     public :: wx_last_error, wx_live_objects
     public :: wx_check, wx_fail, wx_take_string, wx_borrow_string, wx_int, wx_logical
+    public :: wx_take_string_list, wx_take_ints, wx_pack_strings
+
+    !> An element of a list of strings (e.g. the files chosen in a dialog).
+    type, public :: wx_string
+        character(len=:), allocatable :: s   !! the string
+    end type wx_string
 
     !> A reference to a wxWidgets object (or none: a default-initialized
     !> wrapper has handle 0 and is invalid).
@@ -124,6 +130,68 @@ contains
             s = ''
         end if
     end function wx_take_string
+
+    !> Split a buffer of NUL-terminated UTF-8 strings returned by the shim
+    !> (if `status` is `WX_OK`) into a list, and free it.
+    function wx_take_string_list(status, p, nbytes, stat) result(list)
+        integer(c_int), intent(in) :: status
+        type(c_ptr), intent(in) :: p
+        integer(c_int), intent(in) :: nbytes
+        integer, intent(out), optional :: stat
+        type(wx_string), allocatable :: list(:)
+        character(len=:), allocatable :: all
+        integer :: n, start, i
+        all = wx_take_string(status, p, nbytes, stat)
+        n = count([(all(i:i) == achar(0), i = 1, len(all))])
+        allocate(list(n))
+        start = 1
+        n = 0
+        do i = 1, len(all)
+            if (all(i:i) == achar(0)) then
+                n = n + 1
+                list(n)%s = all(start:i-1)
+                start = i + 1
+            end if
+        end do
+    end function wx_take_string_list
+
+    !> Copy `n` C ints returned by the shim (if `status` is `WX_OK`) and free them.
+    function wx_take_ints(status, p, n, stat) result(v)
+        integer(c_int), intent(in) :: status
+        type(c_ptr), intent(in) :: p
+        integer(c_int), intent(in) :: n
+        integer, intent(out), optional :: stat
+        integer, allocatable :: v(:)
+        integer(c_int), pointer :: buf(:)
+        call wx_check(status, stat)
+        if (status /= WX_OK) then
+            allocate(v(0))
+            return
+        end if
+        allocate(v(n))
+        if (n > 0) then
+            call c_f_pointer(p, buf, [n])
+            v = buf
+        end if
+        call wxf_free(p)
+    end function wx_take_ints
+
+    !> A contiguous copy of a character array for the shim (`buf`, items of
+    !> `itemlen` bytes, `n` of them); absent or empty gives n = 0.
+    subroutine wx_pack_strings(items, buf, itemlen, n)
+        character(len=*), intent(in), optional :: items(:)
+        character(len=:), allocatable, intent(out) :: buf(:)
+        integer(c_int), intent(out) :: itemlen, n
+        n = 0
+        itemlen = 1
+        if (present(items)) then
+            n = int(size(items), c_int)
+            itemlen = int(max(len(items), 1), c_int)
+        end if
+        allocate(character(len=itemlen) :: buf(max(n, 1)))
+        buf = ' '
+        if (n > 0) buf(1:n) = items
+    end subroutine wx_pack_strings
 
     !> Fortran logical to shim boolean (0/1).
     pure elemental integer(c_int) function wx_int(l)
