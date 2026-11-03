@@ -180,7 +180,7 @@ native window, and automated checks pass on the initial supported CI target.
 **Status: done** (`example/form.f90`; `test/test_events.f90`,
 `test/test_lifetime.f90`, `test/test_loop.f90`). Also added: check box and
 `wxEVT_CHECKBOX`, close/size/destroy events, `wx_call_after`. The form
-example still needs a manual interactive check on each platform.
+example was checked interactively on macOS; Linux not yet checked by hand.
 
 - Add a `wxPanel`, static text, button, single-line text control, and common
   sizer/layout support.
