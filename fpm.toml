@@ -15,11 +15,6 @@ module-naming = false
 # include flags and libraries come from FPM_CXX / FPM_CXXFLAGS / FPM_LDFLAGS
 # (from `wx-config`): see tools/fpm_wx.py and the README.
 
-# OpenMP (fpm metapackage): used by example/mandelbrot.f90; the library
-# itself has no OpenMP code.
-[dependencies]
-openmp = "*"
-
 [fortran]
 implicit-typing = false
 implicit-external = false

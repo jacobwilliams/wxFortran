@@ -57,10 +57,11 @@ from `wx-config`: `FPM_CXX`, `FPM_CXXFLAGS` (`wx-config --cxxflags`) and
 `FPM_LDFLAGS` (`wx-config --libs core,base`, plus an rpath). To use plain
 `fpm` in a shell, run `eval "$(python tools/fpm_wx.py --env)"` first.
 
-The package depends on fpm's `openmp` metapackage. The Mandelbrot example
-uses it; the library itself has no OpenMP code. Programs built with
-wxFortran are therefore compiled with `-fopenmp` and link gfortran's
-OpenMP runtime (`libgomp`).
+wxFortran does not require OpenMP. `pixi run example` builds the examples
+optimized and with OpenMP (`tools/fpm_wx.py --openmp`, which passes
+`-fopenmp` to fpm); the Mandelbrot example then computes in parallel.
+Built without it, for instance by `pixi run build`, the same example runs
+on one thread.
 
 To build against a system or custom wxWidgets (3.2 or later), set `WX_CONFIG`
 to its `wx-config`, and make sure the Fortran and C++ compilers produce
@@ -308,7 +309,7 @@ failure prints the message and stops the program (`error stop`).
   values set the pointer shape, and `wx_begin_busy_cursor()` /
   `wx_end_busy_cursor()` show a wait cursor during long work.
 * [example/mandelbrot.f90](example/mandelbrot.f90) is an interactive
-  Mandelbrot explorer computed with OpenMP. Drag a box to zoom into it
+  Mandelbrot explorer, computed in parallel with OpenMP when built with it. Drag a box to zoom into it
   (click, right-click and the wheel zoom too); there are colormaps,
   iteration and color settings, supersampling, a thread count, presets, a
   Back history and PNG export.

@@ -8,6 +8,13 @@ Usage:
     python fpm_wx.py --env                         print `export ...` lines; then plain
                                                    `fpm build` works in that shell
 
+Option (anywhere after the fpm command):
+    --openmp    compile and link with OpenMP (-fopenmp). Without an explicit
+                --profile this also selects `--profile release`: fpm drops
+                its default flags when --flag is given without a profile.
+                Code using OpenMP only through `!$` lines runs serially
+                without this option.
+
 fpm compiles the C++ shim (src/cpp/*.cpp) as part of the wxFortran library.
 This script supplies the machine-specific settings through fpm's standard
 environment variables, from `wx-config`:
@@ -92,7 +99,15 @@ def main():
 
     env = dict(os.environ, **env_settings)
     fc = os.environ.get("FPM_FC") or which("gfortran")
-    cmd = ["fpm", sys.argv[1], "--compiler", fc, *sys.argv[2:]]
+    args = sys.argv[2:]
+    if "--openmp" in args:
+        args = [a for a in args if a != "--openmp"]
+        # --link-flag replaces FPM_LDFLAGS (the wxWidgets libraries): pass both
+        omp = ["--flag", "-fopenmp", "--link-flag", f"-fopenmp {env_settings['FPM_LDFLAGS']}"]
+        if "--profile" not in args:
+            omp = ["--profile", "release", *omp]
+        args = [*omp, *args]
+    cmd = ["fpm", sys.argv[1], "--compiler", fc, *args]
     headless = LINUX and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY")
     if sys.argv[1] in ("test", "run") and headless and not os.environ.get("WXF_NO_XVFB"):
         if shutil.which("xvfb-run"):

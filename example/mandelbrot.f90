@@ -12,8 +12,9 @@
 !> screens). While a new one is computed, the old image is shown stretched
 !> to the new view.
 !>
-!> Build with OpenMP (wxFortran's fpm.toml depends on the `openmp`
-!> metapackage); without it the same code runs on one thread.
+!> `pixi run example mandelbrot` builds it optimized and with OpenMP
+!> (`tools/fpm_wx.py run --openmp --example mandelbrot`); built without
+!> OpenMP (e.g. `pixi run build`) the same code runs on one thread.
 !>
 !> `mandelbrot --screenshot out.png [--preset k]` renders the default view
 !> (or preset location k) and exits. `--preset k` also works interactively.

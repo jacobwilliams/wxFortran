@@ -19,7 +19,9 @@ pkg-config = ">=0.29.2,<0.30"
 [tasks]
 build = "python tools/fpm_wx.py build"
 test = "python tools/fpm_wx.py test"
-example = "python tools/fpm_wx.py run --example"
+# examples run as release builds with OpenMP (used by mandelbrot; the others
+# are unaffected). `pixi run build` builds them in debug, without OpenMP: serial.
+example = "python tools/fpm_wx.py run --profile release --openmp --example"
 lint = "python tools/check_fortran.py"
 # build and run ci/consumer, a separate fpm project that depends on wxFortran
 consumer = { cmd = "python ../../tools/fpm_wx.py run", cwd = "ci/consumer" }

@@ -37,5 +37,9 @@ jobs:
       - name: Test
         run: pixi run test
 
+      # the way `pixi run example` builds: optimized, with OpenMP
+      - name: Build with OpenMP (release)
+        run: pixi run python tools/fpm_wx.py build --openmp
+
       - name: Use wxFortran from another fpm project
         run: pixi run consumer
