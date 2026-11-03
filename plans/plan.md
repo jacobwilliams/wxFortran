@@ -195,6 +195,12 @@ callback unbinding, parent destruction, and repeated creation/destruction.
 
 ### Phase 3 — Useful application features
 
+**Status: in progress.** Done: timers (`wx_timer`, `wxEVT_TIMER`), menus
+(`wx_menu_bar`, `wx_menu`, check/radio items, submenus, stock ids,
+`wxEVT_MENU` with per-id binding), and frame status bars, with
+`test/test_timer.f90`, `test/test_menus.f90` and the form example. Next:
+standard dialogs, more controls, basic drawing.
+
 - Prioritize menus/actions, standard dialogs, status bars, common controls,
   sizers, and basic drawing based on example applications and user demand.
 - Add APIs in small, documented groups with examples and focused tests.

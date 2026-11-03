@@ -30,10 +30,10 @@ module wx_events
     private
 
     public :: wxEVT_BUTTON, wxEVT_TEXT, wxEVT_TEXT_ENTER, wxEVT_CLOSE_WINDOW
-    public :: wxEVT_SIZE, wxEVT_DESTROY, wxEVT_CHECKBOX
+    public :: wxEVT_SIZE, wxEVT_DESTROY, wxEVT_CHECKBOX, wxEVT_TIMER, wxEVT_MENU, wxID_ANY
     public :: wx_event_handler, wx_callback
     public :: wx_call_after, wx_active_handlers
-    public :: wx_events_bind, wx_events_install
+    public :: wx_events_install
 
     !> An event being handled (valid only during the handler call).
     type, public :: wx_event
@@ -53,7 +53,13 @@ module wx_events
         procedure :: get_size => wx_event_get_size
     end type wx_event
 
-    !> A binding of a handler to a window's events (see `window%bind`).
+    !> Anything that receives events: windows, timers and menus.
+    type, extends(wx_object), public :: wx_evt_handler
+    contains
+        procedure :: bind => wx_evt_handler_bind
+    end type wx_evt_handler
+
+    !> A binding of a handler to an object's events (see `bind`).
     type, public :: wx_connection
         integer, private :: slot = 0
         integer, private :: serial = 0
@@ -184,26 +190,46 @@ contains
         end do
     end function wx_active_handlers
 
-    !> Bind `handler` to events of `kind` on the object with handle `h`
-    !> (used by `wx_window%bind`).
-    subroutine wx_events_bind(h, kind, handler, data, connection, stat)
+    !> Call `handler` for each event of `kind` (`wxEVT_*`) on this object.
+    !> With `id`, only for events from the window or menu item with that id
+    !> (e.g. one item of a frame's menus: `frame%bind(wxEVT_MENU, on_open, id=id_open)`).
+    !> `data` (kept by pointer: give a `target` that outlives the binding) is
+    !> passed to the handler. `connection` can be used to remove the binding.
+    !> See [[wx_events]] for the full contract.
+    subroutine wx_evt_handler_bind(self, kind, handler, data, id, connection, stat)
+        class(wx_evt_handler), intent(inout) :: self
+        integer, intent(in) :: kind
+        procedure(wx_event_handler) :: handler
+        class(*), intent(inout), target, optional :: data
+        integer, intent(in), optional :: id
+        type(wx_connection), intent(out), optional :: connection
+        integer, intent(out), optional :: stat
+        call wx_events_bind(self%h, kind, handler, data, id, connection, stat)
+    end subroutine wx_evt_handler_bind
+
+    !> Bind `handler` to events of `kind` (from `id`, default any) on the
+    !> object with handle `h`.
+    subroutine wx_events_bind(h, kind, handler, data, id, connection, stat)
         integer(c_int64_t), intent(in) :: h
         integer, intent(in) :: kind
         procedure(wx_event_handler) :: handler
         class(*), intent(inout), target, optional :: data
+        integer, intent(in), optional :: id
         type(wx_connection), intent(out), optional :: connection
         integer, intent(out), optional :: stat
-        integer :: id
-        integer(c_int) :: status
-        id = new_slot()
-        slots(id)%on_event => handler
-        if (present(data)) slots(id)%data => data
-        status = wxf_bind(h, int(kind, c_int), int(id, c_int))
+        integer :: slot
+        integer(c_int) :: status, from
+        from = wxID_ANY
+        if (present(id)) from = int(id, c_int)
+        slot = new_slot()
+        slots(slot)%on_event => handler
+        if (present(data)) slots(slot)%data => data
+        status = wxf_bind(h, int(kind, c_int), int(slot, c_int), from)
         if (status /= WX_OK) then
-            call release(int(id, c_int))
+            call release(int(slot, c_int))
         else if (present(connection)) then
-            connection%slot = id
-            connection%serial = slots(id)%serial
+            connection%slot = slot
+            connection%serial = slots(slot)%serial
         end if
         call wx_check(status, stat)
     end subroutine wx_events_bind
@@ -282,15 +308,15 @@ contains
         wx_event_get_skipped = wx_logical(v)
     end function wx_event_get_skipped
 
-    !> The window that generated the event (compare it with `==`, or
-    !> convert it with `wx_window(event%source())`).
+    !> The window, timer or menu that generated the event (compare it with
+    !> `==`, or convert it with e.g. `wx_window(event%source())`).
     type(wx_object) function wx_event_source(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat
         call wx_check(wxf_event_get_source(self%p, wx_event_source%h), stat)
     end function wx_event_source
 
-    !> The wxWidgets id of the window that generated the event.
+    !> The wxWidgets id of the window or menu item that generated the event.
     integer function wx_event_get_id(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat
@@ -300,7 +326,8 @@ contains
         wx_event_get_id = v
     end function wx_event_get_id
 
-    !> Command events: the integer value (e.g. 1 if a check box was checked).
+    !> Command events: the integer value (e.g. 1 if a check box or check menu
+    !> item was checked).
     integer function wx_event_get_int(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat
@@ -321,7 +348,7 @@ contains
         s = wx_take_string(status, p, len, stat)
     end function wx_event_get_string
 
-    !> Check box events: true if the box is now checked.
+    !> Check box and check/radio menu item events: true if now checked.
     logical function wx_event_is_checked(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat

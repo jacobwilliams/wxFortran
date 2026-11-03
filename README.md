@@ -30,7 +30,8 @@ end program hello
 **Status:** early development (see [plans/plan.md](plans/plan.md)). Phases 0–2
 are in place: application and event loop, frames, panels, static text,
 buttons, text controls, check boxes, box sizers, and typed events with a
-tested lifetime contract. The API may still change.
+tested lifetime contract. Phase 3 has started with timers, menus and status
+bars. The API may still change.
 
 ## Building
 
@@ -145,15 +146,31 @@ failure prints the message and stops the program (`error stop`).
   `parent_sizer%add(s)` transfer it to its new owner. Replacing a window's
   sizer destroys the old one. An unattached sizer must be destroyed with
   `sizer%destroy()`. A sizer handle is valid while its owner chain is alive.
-* `app%cleanup()` destroys every remaining window; all handles become invalid.
+* Timers: `wx_timer(owner=window)` is destroyed with its owner window. A
+  timer without an owner lives until `timer%destroy()`.
+* Menus: a new menu or menu bar is unattached. `bar%append(menu)` and
+  `menu%append_submenu(sub)` transfer the menu, and `frame%set_menu_bar(bar)`
+  transfers the bar to the frame, which destroys any previous menu bar (and its
+  menus). Destroying an attached menu or menu bar fails with `WX_ERR_STATE`.
+  Unattached ones must be destroyed with `destroy`.
+* `app%cleanup()` destroys every remaining window, timer, menu and menu bar;
+  all handles become invalid.
 
 ### Events and callbacks
 
-* `call window%bind(kind, handler, data=..., connection=...)` binds a handler
-  with the `wx_event_handler` interface to one `wxEVT_*` event kind on one
-  window. Available kinds: `wxEVT_BUTTON`, `wxEVT_TEXT`,
-  `wxEVT_TEXT_ENTER`, `wxEVT_CHECKBOX`, `wxEVT_CLOSE_WINDOW`, `wxEVT_SIZE`
-  and `wxEVT_DESTROY`.
+* `call obj%bind(kind, handler, data=..., id=..., connection=...)` binds a
+  handler with the `wx_event_handler` interface to one `wxEVT_*` event kind
+  on one window, timer or menu (all extend `wx_evt_handler`). With `id`, the
+  handler runs only for events from that window or menu item id. Example:
+  `frame%bind(wxEVT_MENU, on_open, id=id_open)`. Available kinds:
+  `wxEVT_BUTTON`, `wxEVT_TEXT`, `wxEVT_TEXT_ENTER`, `wxEVT_CHECKBOX`,
+  `wxEVT_CLOSE_WINDOW`, `wxEVT_SIZE`, `wxEVT_DESTROY`, `wxEVT_TIMER` and
+  `wxEVT_MENU`.
+* Menu events go to the menu, then to its frame. Items are identified by
+  integer ids: stock ids (`wxID_EXIT`, `wxID_ABOUT`, ...), which get standard
+  labels and, on macOS, their place in the application menu, or ids returned
+  by `menu%append`.
+* Timer events are delivered only while the event loop runs.
 * Handlers run synchronously on the GUI thread, during event processing:
   normally inside `app%run()` (or `app%process_pending()`), or inside the call
   that generated the event (e.g. `text%set_value`, `button%emit_click`).
@@ -183,17 +200,19 @@ failure prints the message and stops the program (`error stop`).
 * `wx_call_after(callback, data)` runs a `wx_callback` once from the event
   loop.
 * All GUI calls must be made on the main thread.
+* A failed wxWidgets assertion (a usage error inside wxWidgets) is printed on
+  stderr and recorded as the last error. It does not open a dialog.
 
 ## Repository layout
 
 ```text
 src/wx.f90        umbrella module (`use wx`)
-src/core/         wx_base (errors, handles, strings), wx_events, wx_app
-src/widgets/      wx_windows (window base, sizers), wx_controls (frames, controls)
+src/core/         wx_base (errors, handles, strings), wx_events, wx_app, wx_timer
+src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, controls)
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
-test/             tests (fpm test): core, events, lifetime, loop
-example/          hello, form
+test/             tests (fpm test): core, events, lifetime, loop, timer, menus
+example/          hello, form (with menus, status bar and a timer)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap

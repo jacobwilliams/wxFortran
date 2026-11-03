@@ -44,6 +44,8 @@ enum wxf_event_kind : int {
     WXF_EVT_SIZE = 5,
     WXF_EVT_DESTROY = 6,
     WXF_EVT_CHECKBOX = 7,
+    WXF_EVT_TIMER = 8,
+    WXF_EVT_MENU = 9,
 };
 
 // Fortran callbacks: dispatch(slot, event or null, event kind), release(slot).
@@ -80,6 +82,23 @@ int64_t wxf_handle_of(wxWindow *w);
 
 // A live window of type T, or null (also null if the window is another type).
 template <class T> T *wxf_get(int64_t h) { return dynamic_cast<T *>(wxf_window(h)); }
+
+// Other event handlers (timers, menus): register, and look up (windows too).
+int64_t wxf_register_handler(wxEvtHandler *p);
+wxEvtHandler *wxf_handler(int64_t h);
+int64_t wxf_handle_of_handler(const wxEvtHandler *p);
+template <class T> T *wxf_get_handler(int64_t h) { return dynamic_cast<T *>(wxf_handler(h)); }
+
+// Mark handle `h` dead now (its object is deleted later).
+void wxf_mark_dead(int64_t h);
+
+// True while a Fortran event handler is running.
+bool wxf_dispatching();
+
+#define WXF_GET_HANDLER(T, var, h)                                             \
+    if (!wxf_app_ready()) return wxf_fail(WXF_ERR_NO_APP, "wx_app has not been initialized"); \
+    T *var = wxf_get_handler<T>(h);                                            \
+    if (!var) return wxf_fail_handle(h)
 
 // Sizers: register, look up (null if dead), and track ownership.
 int64_t wxf_register_sizer(wxSizer *s);

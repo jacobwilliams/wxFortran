@@ -28,6 +28,10 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_SIZE = 5          !! a window was resized
     integer(c_int), parameter, public :: wxEVT_DESTROY = 6       !! a window is being destroyed
     integer(c_int), parameter, public :: wxEVT_CHECKBOX = 7      !! a check box was toggled
+    integer(c_int), parameter, public :: wxEVT_TIMER = 8         !! a timer fired
+    integer(c_int), parameter, public :: wxEVT_MENU = 9          !! a menu item was selected
+
+    integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 
     public :: wxf_last_error, wxf_clear_error, wxf_free, wxf_is_valid, wxf_live_count
     public :: wxf_app_init, wxf_app_run, wxf_app_exit_main_loop, wxf_app_is_main_loop_running
@@ -141,12 +145,13 @@ module wx_c_core
             type(c_funptr), value :: dispatch, release
         end subroutine wxf_set_dispatcher
 
-        !> Bind slot `slot` to events of `kind` on window `h`.
-        function wxf_bind(h, kind, slot) bind(C, name='wxf_bind') result(r)
+        !> Bind slot `slot` to events of `kind` on handler `h`, from `id` only
+        !> (`wxID_ANY`: from any id).
+        function wxf_bind(h, kind, slot, id) bind(C, name='wxf_bind') result(r)
             import :: c_int, c_int64_t
             implicit none
             integer(c_int64_t), value :: h
-            integer(c_int), value :: kind, slot
+            integer(c_int), value :: kind, slot, id
             integer(c_int) :: r
         end function wxf_bind
 

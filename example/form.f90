@@ -1,6 +1,8 @@
 !> A small form: labelled text fields, a check box and buttons laid out with
 !> nested sizers. Submit (or Enter in a field) shows a greeting; the live
-!> character count updates as you type; Quit closes the frame.
+!> character count updates as you type; Quit closes the frame. A menu bar
+!> (File > Clear, File > Quit, Help > About) and a status bar with a clock
+!> updated by a timer.
 module form_ui
 
     use wx
@@ -14,6 +16,7 @@ module form_ui
         type(wx_check_box) :: shout
         type(wx_static_text) :: count
         type(wx_static_text) :: result
+        type(wx_timer) :: clock
     end type form_t
 
 contains
@@ -35,8 +38,44 @@ contains
             end if
             call f%result%set_label(msg)
             call f%frame%layout()
+            call f%frame%set_status_text('Submitted')
         end select
     end subroutine on_submit
+
+    !> File > Clear: empty the fields.
+    subroutine on_clear(event, data)
+        type(wx_event), intent(inout) :: event
+        class(*), intent(inout), optional :: data
+        select type (f => data)
+        type is (form_t)
+            call f%name%clear()
+            call f%city%clear()
+            call f%result%set_label('')
+            call f%frame%set_status_text('Cleared')
+        end select
+    end subroutine on_clear
+
+    !> Help > About.
+    subroutine on_about(event, data)
+        type(wx_event), intent(inout) :: event
+        class(*), intent(inout), optional :: data
+        select type (f => data)
+        type is (form_t)
+            call f%frame%set_status_text('wxFortran form example')
+        end select
+    end subroutine on_about
+
+    !> Clock timer: show the time in the second status field.
+    subroutine on_clock(event, data)
+        type(wx_event), intent(inout) :: event
+        class(*), intent(inout), optional :: data
+        character(len=10) :: t
+        select type (f => data)
+        type is (form_t)
+            call date_and_time(time=t)
+            call f%frame%set_status_text(t(1:2)//':'//t(3:4)//':'//t(5:6), field=1)
+        end select
+    end subroutine on_clock
 
     !> Show the length of the name as it is typed.
     subroutine on_name_changed(event, data)
@@ -50,7 +89,8 @@ contains
         end select
     end subroutine on_name_changed
 
-    !> Close the frame (which ends the program's main loop).
+    !> Close the frame (which ends the program's main loop); from the Quit
+    !> button or File > Quit.
     subroutine on_quit(event, data)
         type(wx_event), intent(inout) :: event
         class(*), intent(inout), optional :: data
@@ -87,6 +127,9 @@ program form
     type(wx_panel) :: panel
     type(wx_button) :: submit, quit
     type(wx_box_sizer) :: main, row1, row2, buttons
+    type(wx_menu_bar) :: bar
+    type(wx_menu) :: file_menu, help_menu
+    integer :: id_clear, id
 
     app = wx_app()
 
@@ -130,8 +173,31 @@ program form
     call f%name%bind(wxEVT_TEXT, on_name_changed, data=f)
     call quit%bind(wxEVT_BUTTON, on_quit, data=f)
 
-    call f%frame%set_size(420, 240)
-    call f%frame%set_min_size(360, 220)
+    ! menus: stock items get standard labels and shortcuts (and on macOS move
+    ! to the application menu)
+    bar = wx_menu_bar()
+    file_menu = wx_menu()
+    id_clear = file_menu%append("&Clear"//achar(9)//"Ctrl+L", help="Empty the fields")
+    call file_menu%append_separator()
+    id = file_menu%append(id=wxID_EXIT, help="Quit the program")
+    help_menu = wx_menu()
+    id = help_menu%append(id=wxID_ABOUT, help="About this example")
+    call bar%append(file_menu, "&File")
+    call bar%append(help_menu, "&Help")
+    call f%frame%set_menu_bar(bar)
+    call f%frame%bind(wxEVT_MENU, on_clear, data=f, id=id_clear)
+    call f%frame%bind(wxEVT_MENU, on_quit, data=f, id=wxID_EXIT)
+    call f%frame%bind(wxEVT_MENU, on_about, data=f, id=wxID_ABOUT)
+
+    ! status bar: messages (and menu help) in field 0, a clock in field 1
+    call f%frame%create_status_bar(2)
+    call f%frame%set_status_text("Ready")
+    f%clock = wx_timer(owner=f%frame)
+    call f%clock%bind(wxEVT_TIMER, on_clock, data=f)
+    call f%clock%start(1000)
+
+    call f%frame%set_size(440, 300)
+    call f%frame%set_min_size(380, 280)
     call f%frame%center()
     call f%frame%show()
     call f%name%set_focus()

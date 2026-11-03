@@ -27,7 +27,7 @@ module wx_windows
     public :: wxALIGN_CENTER, wxALIGN_RIGHT, wxALIGN_BOTTOM
 
     !> Any window or control.
-    type, extends(wx_object), public :: wx_window
+    type, extends(wx_evt_handler), public :: wx_window
     contains
         procedure :: destroy => wx_window_destroy
         procedure :: close => wx_window_close
@@ -53,7 +53,6 @@ module wx_windows
         procedure :: center => wx_window_center
         procedure :: child_count => wx_window_child_count
         procedure :: set_sizer => wx_window_set_sizer
-        procedure :: bind => wx_window_bind
     end type wx_window
 
     !> A generic window reference to an existing object (e.g. `event%source()`).
@@ -321,20 +320,6 @@ contains
         if (present(fit)) f = fit
         call wx_check(wxf_window_set_sizer(self%h, sizer%h, wx_int(f)), stat)
     end subroutine wx_window_set_sizer
-
-    !> Call `handler` for each event of `kind` (`wxEVT_*`) on this window.
-    !> `data` (kept by pointer: give a `target` that outlives the binding) is
-    !> passed to the handler. `connection` can be used to remove the binding.
-    !> See [[wx_events]] for the full contract.
-    subroutine wx_window_bind(self, kind, handler, data, connection, stat)
-        class(wx_window), intent(inout) :: self
-        integer, intent(in) :: kind
-        procedure(wx_event_handler) :: handler
-        class(*), intent(inout), target, optional :: data
-        type(wx_connection), intent(out), optional :: connection
-        integer, intent(out), optional :: stat
-        call wx_events_bind(self%h, kind, handler, data, connection, stat)
-    end subroutine wx_window_bind
 
     ! -------------------------------------------------------------------------
     ! sizers

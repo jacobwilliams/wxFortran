@@ -8,6 +8,7 @@
 #include <wx/tracker.h>
 #include <wx/weakref.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -62,6 +63,8 @@ WXF_API void wxf_free(void *p) { std::free(p); }
 // a parent window, or the user closing the frame). wxEVT_DESTROY marks the
 // entry dead slightly earlier, when destruction starts.
 //
+// Other event handlers (timers, menus) are tracked the same way.
+//
 // Sizers are not trackable: a sizer entry has an owner (the window it is set
 // on, or the sizer it was added to) and is alive only while its owner chain is.
 
@@ -69,7 +72,9 @@ namespace {
 
 struct entry {
     wxWindow *win = nullptr;
+    wxEvtHandler *evh = nullptr;   // a tracked non-window event handler
     wxSizer *sizer = nullptr;
+    const void *key = nullptr;     // its key in reverse()
     int64_t owner = 0;     // sizers: owning window/sizer handle (0: unattached)
     bool dead = false;
 };
@@ -86,14 +91,14 @@ std::unordered_map<const void *, int64_t> &reverse() {
 
 int64_t next_handle = 0;
 
-// Removes a window's entry when wxWidgets deletes the window.
+// Removes an entry when wxWidgets deletes the window or event handler.
 struct window_tracker : wxTrackerNode {
     int64_t h;
     explicit window_tracker(int64_t h) : h(h) {}
     void OnObjectDestroy() override {
         auto it = table().find(h);
         if (it != table().end()) {
-            reverse().erase(it->second.win);
+            reverse().erase(it->second.key);
             table().erase(it);
         }
         delete this;
@@ -121,6 +126,7 @@ bool alive(int64_t h, int depth = 0) {
         }
         return true;
     }
+    if (e.evh) return true;
     if (e.owner == 0) return true;
     return depth < 1000 && alive(e.owner, depth + 1);
 }
@@ -132,6 +138,7 @@ int64_t wxf_register(wxWindow *w) {
     const int64_t h = ++next_handle;
     entry e;
     e.win = w;
+    e.key = w;
     table()[h] = e;
     reverse()[w] = h;
     w->AddNode(new window_tracker(h));
@@ -156,10 +163,41 @@ int64_t wxf_handle_of(wxWindow *w) {
     return it == reverse().end() ? 0 : it->second;
 }
 
+int64_t wxf_register_handler(wxEvtHandler *p) {
+    if (!p) return 0;
+    const int64_t h = ++next_handle;
+    entry e;
+    e.evh = p;
+    e.key = p;
+    table()[h] = e;
+    reverse()[p] = h;
+    p->AddNode(new window_tracker(h));
+    return h;
+}
+
+wxEvtHandler *wxf_handler(int64_t h) {
+    if (h <= 0 || !alive(h)) return nullptr;
+    const entry &e = table()[h];
+    if (e.win) return e.win;
+    return e.evh;
+}
+
+int64_t wxf_handle_of_handler(const wxEvtHandler *p) {
+    if (!p) return 0;
+    auto it = reverse().find(p);
+    return it == reverse().end() ? 0 : it->second;
+}
+
+void wxf_mark_dead(int64_t h) {
+    auto it = table().find(h);
+    if (it != table().end()) it->second.dead = true;
+}
+
 int64_t wxf_register_sizer(wxSizer *s) {
     const int64_t h = ++next_handle;
     entry e;
     e.sizer = s;
+    e.key = s;
     table()[h] = e;
     reverse()[s] = h;
     return h;
@@ -237,6 +275,18 @@ char *app_argv[2] = {app_name, nullptr};
 
 bool wxf_app_ready() { return app_ready && wxTheApp; }
 
+namespace {
+// wxWidgets assertion failures would otherwise open a modal dialog: report
+// them on stderr (and as the last error) and continue, as wx does after one.
+void assert_handler(const wxString &file, int line, const wxString &func, const wxString &cond,
+                    const wxString &msg) {
+    const wxString text = wxString::Format("wxWidgets assertion failed: %s(%d) in %s(): %s%s%s", file,
+                                           line, func, cond, msg.empty() ? "" : ": ", msg);
+    std::fprintf(stderr, "%s\n", static_cast<const char *>(text.utf8_str()));
+    wxf_fail(WXF_ERR_FAILED, std::string(text.utf8_str()));
+}
+}   // namespace
+
 // Initialize wxWidgets and the application object. `name` (UTF-8) is the
 // program name (argv[0]); it may be empty.
 WXF_API int wxf_app_init(const char *name, int len) {
@@ -248,6 +298,7 @@ WXF_API int wxf_app_init(const char *name, int len) {
         app_name[n] = '\0';
     }
     app_argc = 1;
+    wxSetAssertHandler(assert_handler);
     wxApp::SetInstance(new wxfApp);
     if (!wxEntryStart(app_argc, app_argv)) {
         return wxf_fail(WXF_ERR_FAILED, "wxEntryStart failed (is a display available?)");
@@ -308,6 +359,20 @@ WXF_API int wxf_app_cleanup() {
     WXF_TRY
     WXF_NEED_APP();
     if (loop_running) return wxf_fail(WXF_ERR_STATE, "cannot clean up while the main loop runs");
+    // Delete what wxWidgets would not: timers, menus and menu bars not owned
+    // by a window (copy first: deleting erases table entries).
+    std::vector<wxEvtHandler *> orphans;
+    std::vector<wxMenuBar *> bars;
+    for (const auto &kv : table()) {
+        const entry &e = kv.second;
+        if (auto *t = dynamic_cast<wxTimer *>(e.evh)) orphans.push_back(t);
+        if (auto *m = dynamic_cast<wxMenu *>(e.evh))
+            if (!m->IsAttached() && !m->GetParent()) orphans.push_back(m);
+        if (auto *b = dynamic_cast<wxMenuBar *>(e.win))
+            if (!b->IsAttached()) bars.push_back(b);
+    }
+    for (wxEvtHandler *p : orphans) delete p;
+    for (wxMenuBar *b : bars) delete b;
     wxTheApp->OnExit();
     wxEntryCleanup();
     app_ready = false;
@@ -335,8 +400,9 @@ namespace {
 
 struct binding {
     wxEvtHandler *handler;
-    int64_t h;   // handle of the window the handler is bound to
+    int64_t h;   // handle of the window/handler the handler is bound to
     int kind;
+    int id;      // window/menu item id the binding is limited to, or wxID_ANY
     wxObject *data;
 };
 
@@ -365,6 +431,8 @@ template <class F> bool with_event_tag(int kind, F f) {
     case WXF_EVT_SIZE: f(wxEVT_SIZE); return true;
     case WXF_EVT_DESTROY: f(wxEVT_DESTROY); return true;
     case WXF_EVT_CHECKBOX: f(wxEVT_CHECKBOX); return true;
+    case WXF_EVT_TIMER: f(wxEVT_TIMER); return true;
+    case WXF_EVT_MENU: f(wxEVT_MENU); return true;
     default: return false;
     }
 }
@@ -395,7 +463,7 @@ void on_event(wxEvent &e) {
         // only report it for the window the handler was bound to.
         e.Skip();
         if (e.GetEventObject() != it->second.handler) return;
-    } else if (!wxf_window(it->second.h)) {
+    } else if (!wxf_handler(it->second.h)) {
         // the window was destroyed (its deletion may be pending): no more
         // events for its handlers
         return;
@@ -410,15 +478,20 @@ void on_event(wxEvent &e) {
 
 }   // namespace
 
-// Bind Fortran slot `slot` to events of `kind` on window `h`.
-WXF_API int wxf_bind(int64_t h, int kind, int slot) {
+bool wxf_dispatching() { return !event_stack().empty(); }
+
+// Bind Fortran slot `slot` to events of `kind` on window or event handler
+// `h`, from the window or menu item `id` only (wxID_ANY: from any).
+WXF_API int wxf_bind(int64_t h, int kind, int slot, int id) {
     WXF_TRY
-    WXF_GET(wxWindow, w, h);
+    WXF_NEED_APP();
+    wxEvtHandler *w = wxf_handler(h);
+    if (!w) return wxf_fail_handle(h);
     if (!with_event_tag(kind, [](const auto &) {}))
         return wxf_fail(WXF_ERR_ARGUMENT, "unknown event kind " + std::to_string(kind));
     auto *data = new wxf_slot_data(slot, kind);
-    bindings()[slot] = {w, h, kind, data};
-    with_event_tag(kind, [&](const auto &tag) { w->Bind(tag, &on_event, wxID_ANY, wxID_ANY, data); });
+    bindings()[slot] = {w, h, kind, id, data};
+    with_event_tag(kind, [&](const auto &tag) { w->Bind(tag, &on_event, id, wxID_ANY, data); });
     return WXF_OK;
     WXF_CATCH
 }
@@ -433,7 +506,7 @@ WXF_API int wxf_unbind(int slot, int *found) {
     const binding b = it->second;
     // deletes the wxf_slot_data, which erases the entry and releases the slot
     with_event_tag(b.kind, [&](const auto &tag) {
-        if (b.handler->Unbind(tag, &on_event, wxID_ANY, wxID_ANY, b.data)) *found = 1;
+        if (b.handler->Unbind(tag, &on_event, b.id, wxID_ANY, b.data)) *found = 1;
     });
     return WXF_OK;
     WXF_CATCH
@@ -495,11 +568,14 @@ WXF_API int wxf_event_get_skipped(void *e, int *skipped) {
     WXF_CATCH
 }
 
-// The handle of the window that generated the event (0 if not a wxf window).
+// The handle of the window or handler that generated the event (0 if it was
+// not created through wxf).
 WXF_API int wxf_event_get_source(void *e, int64_t *h) {
     WXF_TRY
     WXF_EVENT(ev, e);
-    *h = wxf_handle_of(dynamic_cast<wxWindow *>(ev->GetEventObject()));
+    wxObject *o = ev->GetEventObject();
+    *h = wxf_handle_of(dynamic_cast<wxWindow *>(o));
+    if (*h == 0) *h = wxf_handle_of_handler(dynamic_cast<wxEvtHandler *>(o));
     return WXF_OK;
     WXF_CATCH
 }
@@ -583,6 +659,9 @@ WXF_API int wxf_event_get_size(void *e, int *width, int *height) {
 WXF_API int wxf_window_destroy(int64_t h) {
     WXF_TRY
     WXF_GET(wxWindow, w, h);
+    if (auto *bar = dynamic_cast<wxMenuBar *>(w))
+        if (bar->IsAttached())
+            return wxf_fail(WXF_ERR_STATE, "menu bar is owned by a frame");
     if (!w->IsTopLevel() && !event_stack().empty()) {
         table()[h].dead = true;
         w->Hide();

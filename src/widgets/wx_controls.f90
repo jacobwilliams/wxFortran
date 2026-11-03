@@ -9,18 +9,26 @@ module wx_controls
     use iso_c_binding
     use wx_c_core
     use wx_c_widgets
+    use wx_c_menus
     use wx_base
     use wx_windows
+    use wx_menus, only: wx_menu_bar
     implicit none
     private
 
     public :: wxTE_MULTILINE, wxTE_PROCESS_ENTER, wxTE_READONLY, wxTE_PASSWORD
 
-    !> A top-level window with a title bar.
+    !> A top-level window with a title bar, and optionally a menu bar and a
+    !> status bar.
     type, extends(wx_window), public :: wx_frame
     contains
         procedure :: set_title => wx_frame_set_title
         procedure :: get_title => wx_frame_get_title
+        procedure :: set_menu_bar => wx_frame_set_menu_bar
+        procedure :: create_status_bar => wx_frame_create_status_bar
+        procedure :: set_status_text => wx_frame_set_status_text
+        procedure :: get_status_text => wx_frame_get_status_text
+        procedure :: status_field_count => wx_frame_status_field_count
     end type wx_frame
 
     !> Create a frame (initially hidden: call `show`).
@@ -140,6 +148,65 @@ contains
         status = wxf_frame_get_title(self%h, p, len)
         s = wx_take_string(status, p, len, stat)
     end function wx_frame_get_title
+
+    !> Use `bar` as the frame's menu bar; the frame then owns it (and destroys
+    !> its previous menu bar). Menu events go to the frame.
+    subroutine wx_frame_set_menu_bar(self, bar, stat)
+        class(wx_frame), intent(inout) :: self
+        class(wx_menu_bar), intent(in) :: bar
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_frame_set_menu_bar(self%h, bar%h), stat)
+    end subroutine wx_frame_set_menu_bar
+
+    !> Give the frame a status bar with `fields` fields (default 1), or change
+    !> the number of fields of its status bar. Menu item help is shown in
+    !> field 0.
+    subroutine wx_frame_create_status_bar(self, fields, stat)
+        class(wx_frame), intent(inout) :: self
+        integer, intent(in), optional :: fields
+        integer, intent(out), optional :: stat
+        integer(c_int) :: n
+        n = 1
+        if (present(fields)) n = int(fields, c_int)
+        call wx_check(wxf_frame_create_status_bar(self%h, n), stat)
+    end subroutine wx_frame_create_status_bar
+
+    !> Show `text` in status bar field `field` (default 0, the first). Fails
+    !> with `WX_ERR_STATE` if the frame has no status bar.
+    subroutine wx_frame_set_status_text(self, text, field, stat)
+        class(wx_frame), intent(inout) :: self
+        character(len=*), intent(in) :: text
+        integer, intent(in), optional :: field
+        integer, intent(out), optional :: stat
+        integer(c_int) :: f
+        f = 0
+        if (present(field)) f = int(field, c_int)
+        call wx_check(wxf_frame_set_status_text(self%h, text, len(text, c_int), f), stat)
+    end subroutine wx_frame_set_status_text
+
+    !> The text of status bar field `field` (default 0).
+    function wx_frame_get_status_text(self, field, stat) result(s)
+        class(wx_frame), intent(in) :: self
+        integer, intent(in), optional :: field
+        integer, intent(out), optional :: stat
+        character(len=:), allocatable :: s
+        type(c_ptr) :: p
+        integer(c_int) :: f, len, status
+        f = 0
+        if (present(field)) f = int(field, c_int)
+        status = wxf_frame_get_status_text(self%h, f, p, len)
+        s = wx_take_string(status, p, len, stat)
+    end function wx_frame_get_status_text
+
+    !> Number of status bar fields (0 if the frame has no status bar).
+    integer function wx_frame_status_field_count(self, stat)
+        class(wx_frame), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: n
+        n = 0
+        call wx_check(wxf_frame_status_field_count(self%h, n), stat)
+        wx_frame_status_field_count = n
+    end function wx_frame_status_field_count
 
     ! -------------------------------------------------------------------------
     ! wx_panel, wx_static_text
