@@ -102,13 +102,29 @@ WXF_API int wxf_notebook_get_selection(int64_t h, int *i) {
     WXF_CATCH
 }
 
-// Show page i; `notify` != 0 sends the page-changing/changed events.
+// Show page i; `notify` != 0 sends the page-changing/changed events, as a
+// click on the tab would. The events are sent here rather than by
+// wxNotebook::SetSelection: on GTK that changes the page even when the
+// changing event is vetoed.
 WXF_API int wxf_notebook_set_selection(int64_t h, int i, int notify) {
     WXF_TRY
     WXF_GET(wxNotebook, nb, h);
     WXF_PAGE(nb, i);
-    if (notify) nb->SetSelection(i - 1);
-    else nb->ChangeSelection(i - 1);
+    if (!notify) {
+        nb->ChangeSelection(i - 1);
+        return WXF_OK;
+    }
+    const int old = nb->GetSelection();
+    if (old == i - 1) return WXF_OK;
+    wxBookCtrlEvent changing(wxEVT_NOTEBOOK_PAGE_CHANGING, nb->GetId(), i - 1, old);
+    changing.SetEventObject(nb);
+    nb->HandleWindowEvent(changing);
+    if (!changing.IsAllowed()) return WXF_OK;   // vetoed
+    if (!wxf_window(h)) return WXF_OK;          // a handler destroyed the notebook
+    nb->ChangeSelection(i - 1);
+    wxBookCtrlEvent changed(wxEVT_NOTEBOOK_PAGE_CHANGED, nb->GetId(), i - 1, old);
+    changed.SetEventObject(nb);
+    nb->HandleWindowEvent(changed);
     return WXF_OK;
     WXF_CATCH
 }

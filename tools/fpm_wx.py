@@ -27,7 +27,8 @@ WX_CONFIG (e.g. for a system or custom wxWidgets build). FPM_CXXFLAGS and
 FPM_LDFLAGS already set in the environment are kept (appended).
 
 On Linux without a display (e.g. CI), `test` runs under `xvfb-run` if it is
-installed; set WXF_NO_XVFB=1 to disable this.
+installed (with NO_AT_BRIDGE=1: there is no accessibility bus to connect
+to); set WXF_NO_XVFB=1 to disable this.
 """
 
 import os
@@ -112,6 +113,7 @@ def main():
     if sys.argv[1] in ("test", "run") and headless and not os.environ.get("WXF_NO_XVFB"):
         if shutil.which("xvfb-run"):
             cmd = ["xvfb-run", "-a", *cmd]
+            env.setdefault("NO_AT_BRIDGE", "1")   # no AT-SPI bus under Xvfb: silence GTK's warning
         else:
             print("fpm_wx: warning: no display and no xvfb-run; GUI programs will fail to start",
                   file=sys.stderr)
