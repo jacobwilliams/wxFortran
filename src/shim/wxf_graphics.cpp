@@ -147,6 +147,94 @@ WXF_API int wxf_image_read_rgb(const char *path, int len, int *w, int *h, unsign
 }
 
 // ---------------------------------------------------------------------------
+// bitmaps: images made once and drawn many times
+
+// A bitmap from 8-bit RGB data (w*h*3 bytes, row by row from the top-left).
+// `scale` > 1: the data has that many pixels per logical pixel (high-DPI),
+// so the bitmap's logical size is w/scale x h/scale.
+WXF_API int wxf_bitmap_create_rgb(const unsigned char *rgb, int w, int h, double scale, int64_t *out) {
+    WXF_TRY
+    WXF_NEED_APP();
+    *out = 0;
+    if (w <= 0 || h <= 0) return wxf_fail(WXF_ERR_ARGUMENT, "image size must be positive");
+    if (scale <= 0) return wxf_fail(WXF_ERR_ARGUMENT, "scale must be positive");
+    const size_t n = static_cast<size_t>(w) * static_cast<size_t>(h) * 3;
+    auto *data = static_cast<unsigned char *>(std::malloc(n));   // owned by the image
+    std::memcpy(data, rgb, n);
+    wxImage img(w, h, data);
+    auto *b = new wxBitmap(img, -1, scale);
+    if (!b->IsOk()) {
+        delete b;
+        return wxf_fail(WXF_ERR_FAILED, "could not create the bitmap");
+    }
+    *out = wxf_register_bitmap(b);
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_bitmap_load(const char *path, int len, int64_t *out) {
+    WXF_TRY
+    WXF_NEED_APP();
+    *out = 0;
+    wxLogNull no_log_dialog;
+    wxImage img;
+    if (!img.LoadFile(wxf_str(path, len)))
+        return wxf_fail(WXF_ERR_FAILED, "could not read image " + std::string(wxf_str(path, len).utf8_str()));
+    *out = wxf_register_bitmap(new wxBitmap(img));
+    return WXF_OK;
+    WXF_CATCH
+}
+
+#define WXF_BITMAP(var, h)                                                     \
+    WXF_NEED_APP();                                                            \
+    wxBitmap *var = wxf_bitmap(h);                                             \
+    if (!var) return wxf_fail_handle(h)
+
+// Logical size (pixels / scale).
+WXF_API int wxf_bitmap_get_size(int64_t h, double *w, double *ht) {
+    WXF_TRY
+    WXF_BITMAP(b, h);
+    *w = b->GetLogicalWidth();
+    *ht = b->GetLogicalHeight();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_bitmap_save_png(int64_t h, const char *path, int len) {
+    WXF_TRY
+    WXF_BITMAP(b, h);
+    return wxf_save_png(*b, wxf_str(path, len));
+    WXF_CATCH
+}
+
+WXF_API int wxf_bitmap_destroy(int64_t h) {
+    WXF_TRY
+    WXF_BITMAP(b, h);
+    (void)b;
+    wxf_delete_bitmap(h);
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Draw bitmap `b` scaled into the box (x, y, w, h); w, h <= 0: its logical size.
+WXF_API int wxf_gc_draw_bitmap(void *p, int64_t b, double x, double y, double w, double h, int smooth) {
+    WXF_TRY
+    wxGraphicsContext *gc = wxf_live_graphics(p);
+    if (!gc) return wxf_fail(WXF_ERR_STATE, "graphics used outside of its paint handler");
+    WXF_BITMAP(bmp, b);
+    if (w <= 0 || h <= 0) {
+        w = bmp->GetLogicalWidth();
+        h = bmp->GetLogicalHeight();
+    }
+    const wxInterpolationQuality old = gc->GetInterpolationQuality();
+    gc->SetInterpolationQuality(smooth ? wxINTERPOLATION_GOOD : wxINTERPOLATION_NONE);
+    gc->DrawBitmap(*bmp, x, y, w, h);
+    gc->SetInterpolationQuality(old);
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// ---------------------------------------------------------------------------
 // synthetic input (tests and automation)
 
 // Send a mouse event of `kind` (WXF_EVT_LEFT_DOWN, ...) at (x, y) to window
@@ -163,6 +251,7 @@ WXF_API int wxf_window_emit_mouse(int64_t h, int kind, int x, int y, double whee
     case WXF_EVT_MOUSEWHEEL: type = wxEVT_MOUSEWHEEL; break;
     case WXF_EVT_LEFT_DCLICK: type = wxEVT_LEFT_DCLICK; break;
     case WXF_EVT_LEAVE_WINDOW: type = wxEVT_LEAVE_WINDOW; break;
+    case WXF_EVT_RIGHT_UP: type = wxEVT_RIGHT_UP; break;
     default: return wxf_fail(WXF_ERR_ARGUMENT, "not a mouse event kind");
     }
     wxMouseEvent ev(type);

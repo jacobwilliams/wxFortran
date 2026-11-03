@@ -25,6 +25,9 @@ module wx_c_graphics
     public :: wxf_gc_reset_clip, wxf_gc_push_state, wxf_gc_pop_state, wxf_gc_translate
     public :: wxf_gc_scale, wxf_gc_rotate, wxf_gc_set_antialias
 
+    public :: wxf_bitmap_create_rgb, wxf_bitmap_load, wxf_bitmap_get_size, wxf_bitmap_save_png
+    public :: wxf_bitmap_destroy, wxf_gc_draw_bitmap
+
     interface
 
         !> Create a canvas.
@@ -296,6 +299,77 @@ module wx_c_graphics
             integer(c_int), value :: on
             integer(c_int) :: r
         end function wxf_gc_set_antialias
+
+
+        !> Create a bitmap from RGB data.
+        function wxf_bitmap_create_rgb(rgb, w, h, scale, out) &
+                bind(C, name='wxf_bitmap_create_rgb') result(r)
+            import :: c_double, c_int, c_int64_t, c_int8_t
+            implicit none
+            integer(c_int8_t), intent(in) :: rgb(*)
+            integer(c_int), value :: w
+            integer(c_int), value :: h
+            real(c_double), value :: scale
+            integer(c_int64_t), intent(out) :: out
+            integer(c_int) :: r
+        end function wxf_bitmap_create_rgb
+
+        !> Create a bitmap from an image file.
+        function wxf_bitmap_load(path, len_path, out) &
+                bind(C, name='wxf_bitmap_load') result(r)
+            import :: c_char, c_int, c_int64_t
+            implicit none
+            character(kind=c_char), intent(in) :: path(*)
+            integer(c_int), value :: len_path
+            integer(c_int64_t), intent(out) :: out
+            integer(c_int) :: r
+        end function wxf_bitmap_load
+
+        !> Logical size of a bitmap.
+        function wxf_bitmap_get_size(h, w, ht) &
+                bind(C, name='wxf_bitmap_get_size') result(r)
+            import :: c_double, c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            real(c_double), intent(out) :: w
+            real(c_double), intent(out) :: ht
+            integer(c_int) :: r
+        end function wxf_bitmap_get_size
+
+        !> Save a bitmap as PNG.
+        function wxf_bitmap_save_png(h, path, len_path) &
+                bind(C, name='wxf_bitmap_save_png') result(r)
+            import :: c_char, c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            character(kind=c_char), intent(in) :: path(*)
+            integer(c_int), value :: len_path
+            integer(c_int) :: r
+        end function wxf_bitmap_save_png
+
+        !> Delete a bitmap.
+        function wxf_bitmap_destroy(h) &
+                bind(C, name='wxf_bitmap_destroy') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int) :: r
+        end function wxf_bitmap_destroy
+
+        !> Draw a bitmap scaled into a box.
+        function wxf_gc_draw_bitmap(gc, b, x, y, w, ht, smooth) &
+                bind(C, name='wxf_gc_draw_bitmap') result(r)
+            import :: c_double, c_int, c_int64_t, c_ptr
+            implicit none
+            type(c_ptr), value :: gc
+            integer(c_int64_t), value :: b
+            real(c_double), value :: x
+            real(c_double), value :: y
+            real(c_double), value :: w
+            real(c_double), value :: ht
+            integer(c_int), value :: smooth
+            integer(c_int) :: r
+        end function wxf_gc_draw_bitmap
 
     end interface
 

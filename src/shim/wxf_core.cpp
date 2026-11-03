@@ -105,6 +105,7 @@ struct entry {
     wxWindow *win = nullptr;
     wxEvtHandler *evh = nullptr;   // a tracked non-window event handler
     wxSizer *sizer = nullptr;
+    wxBitmap *bitmap = nullptr;    // owned (deleted by wxf_delete_bitmap or cleanup)
     const void *key = nullptr;     // its key in reverse()
     int64_t owner = 0;     // sizers: owning window/sizer handle (0: unattached)
     bool dead = false;
@@ -157,6 +158,7 @@ bool alive(int64_t h, int depth = 0) {
         }
         return true;
     }
+    if (e.bitmap) return true;
     if (e.evh) {
         // a timer owned by a window dies with it (as soon as the window is
         // being destroyed, not only when wxWidgets deletes the timer)
@@ -237,6 +239,31 @@ int64_t wxf_handle_of_handler(const wxEvtHandler *p) {
 void wxf_mark_dead(int64_t h) {
     auto it = table().find(h);
     if (it != table().end()) it->second.dead = true;
+}
+
+int64_t wxf_register_bitmap(wxBitmap *b) {
+    const int64_t h = ++next_handle;
+    entry e;
+    e.bitmap = b;
+    e.key = b;
+    table()[h] = e;
+    reverse()[b] = h;
+    return h;
+}
+
+wxBitmap *wxf_bitmap(int64_t h) {
+    if (h <= 0) return nullptr;
+    auto it = table().find(h);
+    if (it == table().end() || it->second.dead) return nullptr;
+    return it->second.bitmap;
+}
+
+void wxf_delete_bitmap(int64_t h) {
+    auto it = table().find(h);
+    if (it == table().end() || !it->second.bitmap) return;
+    delete it->second.bitmap;
+    reverse().erase(it->second.key);
+    table().erase(it);
 }
 
 int64_t wxf_register_sizer(wxSizer *s) {
@@ -410,8 +437,10 @@ WXF_API int wxf_app_cleanup() {
     // by a window (copy first: deleting erases table entries).
     std::vector<wxEvtHandler *> orphans;
     std::vector<wxMenuBar *> bars;
+    std::vector<int64_t> bitmaps;
     for (const auto &kv : table()) {
         const entry &e = kv.second;
+        if (e.bitmap) bitmaps.push_back(kv.first);
         if (auto *t = dynamic_cast<wxTimer *>(e.evh)) orphans.push_back(t);
         if (auto *m = dynamic_cast<wxMenu *>(e.evh))
             if (!m->IsAttached() && !m->GetParent()) orphans.push_back(m);
@@ -419,6 +448,7 @@ WXF_API int wxf_app_cleanup() {
             if (!b->IsAttached()) bars.push_back(b);
     }
     for (wxEvtHandler *p : orphans) delete p;
+    for (int64_t h : bitmaps) wxf_delete_bitmap(h);
     for (wxMenuBar *b : bars) delete b;
     wxTheApp->OnExit();
     wxEntryCleanup();
@@ -498,6 +528,8 @@ template <class F> bool with_event_tag(int kind, F f) {
     case WXF_EVT_SPINCTRLDOUBLE: f(wxEVT_SPINCTRLDOUBLE); return true;
     case WXF_EVT_NOTEBOOK_PAGE_CHANGED: f(wxEVT_NOTEBOOK_PAGE_CHANGED); return true;
     case WXF_EVT_NOTEBOOK_PAGE_CHANGING: f(wxEVT_NOTEBOOK_PAGE_CHANGING); return true;
+    case WXF_EVT_RIGHT_UP: f(wxEVT_RIGHT_UP); return true;
+    case WXF_EVT_MOUSE_CAPTURE_LOST: f(wxEVT_MOUSE_CAPTURE_LOST); return true;
     default: return false;
     }
 }
@@ -1022,6 +1054,87 @@ WXF_API int wxf_window_center(int64_t h) {
     WXF_TRY
     WXF_GET(wxWindow, w, h);
     w->Centre();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Capture the mouse: the window gets all mouse events (e.g. a drag that
+// leaves it) until wxf_window_release_mouse, or until the capture is lost
+// (WXF_EVT_MOUSE_CAPTURE_LOST, e.g. another application took the focus).
+WXF_API int wxf_window_capture_mouse(int64_t h) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    if (w->HasCapture()) return WXF_OK;
+    // wxWidgets requires capture-lost events to be handled: a default handler
+    // (Fortran handlers bound to the event run first)
+    static auto *with_handler = new std::unordered_map<int64_t, bool>;
+    if (!(*with_handler)[h]) {
+        (*with_handler)[h] = true;
+        w->Bind(wxEVT_MOUSE_CAPTURE_LOST, [](wxMouseCaptureLostEvent &) {});
+    }
+    w->CaptureMouse();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_window_release_mouse(int64_t h) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    if (w->HasCapture()) w->ReleaseMouse();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_window_has_capture(int64_t h, int *has) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    *has = wxf_bool(w->HasCapture());
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Cursor shown over the window: must match WX_CURSOR_* in src/c/wx_c_core.f90.
+WXF_API int wxf_window_set_cursor(int64_t h, int kind) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    wxStockCursor c;
+    switch (kind) {
+    case 0: c = wxCURSOR_ARROW; break;
+    case 1: c = wxCURSOR_CROSS; break;
+    case 2: c = wxCURSOR_HAND; break;
+    case 3: c = wxCURSOR_WAIT; break;
+    case 4: c = wxCURSOR_SIZING; break;
+    case 5: c = wxCURSOR_IBEAM; break;
+    case 6: c = wxCURSOR_MAGNIFIER; break;
+    default: return wxf_fail(WXF_ERR_ARGUMENT, "unknown cursor");
+    }
+    w->SetCursor(wxCursor(c));
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// The busy (wait) cursor for the whole application, nestable.
+WXF_API int wxf_begin_busy_cursor() {
+    WXF_TRY
+    WXF_NEED_APP();
+    wxBeginBusyCursor();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_end_busy_cursor() {
+    WXF_TRY
+    WXF_NEED_APP();
+    if (wxIsBusy()) wxEndBusyCursor();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Physical pixels per logical pixel (2 on a typical high-DPI screen).
+WXF_API int wxf_window_get_content_scale_factor(int64_t h, double *scale) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    *scale = w->GetContentScaleFactor();
     return WXF_OK;
     WXF_CATCH
 }

@@ -26,6 +26,9 @@ module wx_windows
     public :: wxHORIZONTAL, wxVERTICAL
     public :: wxEXPAND, wxALL, wxLEFT, wxRIGHT, wxTOP, wxBOTTOM
     public :: wxALIGN_CENTER, wxALIGN_RIGHT, wxALIGN_BOTTOM
+    public :: WX_CURSOR_ARROW, WX_CURSOR_CROSS, WX_CURSOR_HAND, WX_CURSOR_WAIT, WX_CURSOR_SIZING
+    public :: WX_CURSOR_IBEAM, WX_CURSOR_MAGNIFIER
+    public :: wx_begin_busy_cursor, wx_end_busy_cursor
 
     !> Any window or control.
     type, extends(wx_evt_handler), public :: wx_window
@@ -59,6 +62,11 @@ module wx_windows
         procedure :: get_client_size => wx_window_get_client_size
         procedure :: emit_mouse => wx_window_emit_mouse
         procedure :: emit_key => wx_window_emit_key
+        procedure :: capture_mouse => wx_window_capture_mouse
+        procedure :: release_mouse => wx_window_release_mouse
+        procedure :: has_capture => wx_window_has_capture
+        procedure :: set_cursor => wx_window_set_cursor
+        procedure :: get_content_scale_factor => wx_window_get_content_scale_factor
     end type wx_window
 
     !> A generic window reference to an existing object (e.g. `event%source()`).
@@ -393,6 +401,68 @@ contains
         if (present(modifiers)) m = int(modifiers, c_int)
         call wx_check(wxf_window_emit_key(self%h, int(code, c_int), u, m), stat)
     end subroutine wx_window_emit_key
+
+    !> Send all mouse events to this window, even outside it, until
+    !> `release_mouse` (use while dragging, so the button release is not
+    !> missed). The system may take the capture away: then the window gets
+    !> `wxEVT_MOUSE_CAPTURE_LOST` (end the drag there too).
+    subroutine wx_window_capture_mouse(self, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_window_capture_mouse(self%h), stat)
+    end subroutine wx_window_capture_mouse
+
+    !> End a mouse capture (no effect without one).
+    subroutine wx_window_release_mouse(self, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_window_release_mouse(self%h), stat)
+    end subroutine wx_window_release_mouse
+
+    !> True while this window has captured the mouse.
+    logical function wx_window_has_capture(self, stat)
+        class(wx_window), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: v
+        v = 0
+        call wx_check(wxf_window_has_capture(self%h, v), stat)
+        wx_window_has_capture = wx_logical(v)
+    end function wx_window_has_capture
+
+    !> The mouse cursor shown over the window: `WX_CURSOR_ARROW` (normal),
+    !> `WX_CURSOR_CROSS`, `WX_CURSOR_HAND`, `WX_CURSOR_WAIT`,
+    !> `WX_CURSOR_SIZING`, `WX_CURSOR_IBEAM` or `WX_CURSOR_MAGNIFIER`.
+    subroutine wx_window_set_cursor(self, cursor, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(in) :: cursor
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_window_set_cursor(self%h, int(cursor, c_int)), stat)
+    end subroutine wx_window_set_cursor
+
+    !> Physical pixels per logical pixel: 1, or e.g. 2 on a high-DPI
+    !> ("Retina") screen. Images computed at `scale` times the window size
+    !> look sharp there (see `wx_bitmap(rgb, scale=)`).
+    real(c_double) function wx_window_get_content_scale_factor(self, stat)
+        class(wx_window), intent(in) :: self
+        integer, intent(out), optional :: stat
+        real(c_double) :: s
+        s = 1
+        call wx_check(wxf_window_get_content_scale_factor(self%h, s), stat)
+        wx_window_get_content_scale_factor = s
+    end function wx_window_get_content_scale_factor
+
+    !> Show the busy cursor over all windows until [[wx_end_busy_cursor]]
+    !> (calls nest), e.g. around a long computation in a handler.
+    subroutine wx_begin_busy_cursor(stat)
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_begin_busy_cursor(), stat)
+    end subroutine wx_begin_busy_cursor
+
+    !> End one [[wx_begin_busy_cursor]].
+    subroutine wx_end_busy_cursor(stat)
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_end_busy_cursor(), stat)
+    end subroutine wx_end_busy_cursor
 
     ! -------------------------------------------------------------------------
     ! sizers

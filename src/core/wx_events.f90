@@ -38,7 +38,7 @@ module wx_events
     public :: WXK_HOME, WXK_LEFT, WXK_UP, WXK_RIGHT, WXK_DOWN, WXK_F1, WXK_PAGEUP, WXK_PAGEDOWN
     public :: wxEVT_CHOICE, wxEVT_LISTBOX, wxEVT_LISTBOX_DCLICK, wxEVT_SLIDER, wxEVT_SPINCTRL
     public :: wxEVT_RADIOBOX, wxEVT_SPINCTRLDOUBLE, wxEVT_NOTEBOOK_PAGE_CHANGED
-    public :: wxEVT_NOTEBOOK_PAGE_CHANGING, wxEVT_TOOL
+    public :: wxEVT_NOTEBOOK_PAGE_CHANGING, wxEVT_TOOL, wxEVT_RIGHT_UP, wxEVT_MOUSE_CAPTURE_LOST
     public :: wx_events_slot_new, wx_events_slot_free
     public :: wx_event_handler, wx_callback
     public :: wx_call_after, wx_active_handlers

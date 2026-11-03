@@ -50,6 +50,17 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_NOTEBOOK_PAGE_CHANGED = 26  !! a notebook page was selected
     integer(c_int), parameter, public :: wxEVT_NOTEBOOK_PAGE_CHANGING = 27 !! a notebook page is about to change (can be vetoed)
     integer(c_int), parameter, public :: wxEVT_TOOL = 9          !! a toolbar tool was clicked (the same event as wxEVT_MENU)
+    integer(c_int), parameter, public :: wxEVT_RIGHT_UP = 28     !! right mouse button released
+    integer(c_int), parameter, public :: wxEVT_MOUSE_CAPTURE_LOST = 29 !! the mouse capture was taken away
+
+    ! cursors: must match wxf_window_set_cursor in src/shim/wxf_core.cpp
+    integer(c_int), parameter, public :: WX_CURSOR_ARROW = 0      !! the normal arrow
+    integer(c_int), parameter, public :: WX_CURSOR_CROSS = 1      !! a crosshair
+    integer(c_int), parameter, public :: WX_CURSOR_HAND = 2       !! a pointing hand
+    integer(c_int), parameter, public :: WX_CURSOR_WAIT = 3       !! busy
+    integer(c_int), parameter, public :: WX_CURSOR_SIZING = 4     !! move/resize arrows
+    integer(c_int), parameter, public :: WX_CURSOR_IBEAM = 5      !! text insertion
+    integer(c_int), parameter, public :: WX_CURSOR_MAGNIFIER = 6  !! a magnifying glass
 
     integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 
@@ -76,6 +87,9 @@ module wx_c_core
     integer(c_int), parameter, public :: WXK_PAGEDOWN = 367  !! Page Down
 
     public :: wxf_set_error
+    public :: wxf_window_capture_mouse, wxf_window_release_mouse, wxf_window_has_capture
+    public :: wxf_window_set_cursor, wxf_begin_busy_cursor, wxf_end_busy_cursor
+    public :: wxf_window_get_content_scale_factor
     public :: wxf_event_get_selection, wxf_event_get_double
     public :: wxf_last_error, wxf_clear_error, wxf_free, wxf_is_valid, wxf_live_count
     public :: wxf_app_init, wxf_app_run, wxf_app_exit_main_loop, wxf_app_is_main_loop_running
@@ -653,6 +667,71 @@ module wx_c_core
             real(c_double), intent(out) :: value
             integer(c_int) :: r
         end function wxf_event_get_double
+
+
+        !> Capture the mouse.
+        function wxf_window_capture_mouse(h) &
+                bind(C, name='wxf_window_capture_mouse') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int) :: r
+        end function wxf_window_capture_mouse
+
+        !> Release the mouse.
+        function wxf_window_release_mouse(h) &
+                bind(C, name='wxf_window_release_mouse') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int) :: r
+        end function wxf_window_release_mouse
+
+        !> Whether the window has the mouse.
+        function wxf_window_has_capture(h, has) &
+                bind(C, name='wxf_window_has_capture') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), intent(out) :: has
+            integer(c_int) :: r
+        end function wxf_window_has_capture
+
+        !> Set the cursor over a window.
+        function wxf_window_set_cursor(h, kind) &
+                bind(C, name='wxf_window_set_cursor') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), value :: kind
+            integer(c_int) :: r
+        end function wxf_window_set_cursor
+
+        !> Show the busy cursor.
+        function wxf_begin_busy_cursor() &
+                bind(C, name='wxf_begin_busy_cursor') result(r)
+            import :: c_int
+            implicit none
+            integer(c_int) :: r
+        end function wxf_begin_busy_cursor
+
+        !> Stop showing the busy cursor.
+        function wxf_end_busy_cursor() &
+                bind(C, name='wxf_end_busy_cursor') result(r)
+            import :: c_int
+            implicit none
+            integer(c_int) :: r
+        end function wxf_end_busy_cursor
+
+        !> Physical pixels per logical pixel.
+        function wxf_window_get_content_scale_factor(h, scale) &
+                bind(C, name='wxf_window_get_content_scale_factor') result(r)
+            import :: c_double, c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            real(c_double), intent(out) :: scale
+            integer(c_int) :: r
+        end function wxf_window_get_content_scale_factor
 
     end interface
 

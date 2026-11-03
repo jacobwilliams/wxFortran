@@ -207,7 +207,10 @@ color, About) with scripted answers for tests, and list/value controls
 `test/test_dialogs.f90`, `test/test_controls.f90` and the showcase
 example. Containers and layout (notebook, splitter, grid / flex grid /
 static box sizers, toolbar, image view, RGB arrays drawn on a canvas), with
-`test/test_layout.f90` and `example/layout.f90`. Next: OpenGL
+`test/test_layout.f90` and `example/layout.f90`. Bitmaps (`wx_bitmap`,
+high-DPI aware), mouse capture, cursors and the content scale factor, with
+`test/test_input.f90` and `example/mandelbrot.f90` (OpenMP via the fpm
+`openmp` metapackage). Next: OpenGL
 (`wxGLCanvas`); later, a reusable plotting module distilled from the plot
 example.
 

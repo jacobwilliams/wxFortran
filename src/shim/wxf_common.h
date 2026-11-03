@@ -64,6 +64,8 @@ enum wxf_event_kind : int {
     WXF_EVT_SPINCTRLDOUBLE = 25,
     WXF_EVT_NOTEBOOK_PAGE_CHANGED = 26,
     WXF_EVT_NOTEBOOK_PAGE_CHANGING = 27,
+    WXF_EVT_RIGHT_UP = 28,
+    WXF_EVT_MOUSE_CAPTURE_LOST = 29,
 };
 
 // Modifier key bits: must match WX_MOD_* in src/c/wx_c_core.f90.
@@ -109,6 +111,12 @@ int64_t wxf_register_handler(wxEvtHandler *p);
 wxEvtHandler *wxf_handler(int64_t h);
 int64_t wxf_handle_of_handler(const wxEvtHandler *p);
 template <class T> T *wxf_get_handler(int64_t h) { return dynamic_cast<T *>(wxf_handler(h)); }
+
+// Bitmaps (owned by Fortran): register, look up (null if destroyed), and
+// delete (the handle becomes invalid).
+int64_t wxf_register_bitmap(wxBitmap *b);
+wxBitmap *wxf_bitmap(int64_t h);
+void wxf_delete_bitmap(int64_t h);
 
 // Mark handle `h` dead now (its object is deleted later).
 void wxf_mark_dead(int64_t h);

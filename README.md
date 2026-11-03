@@ -46,7 +46,7 @@ clean checkout:
 pixi install            # gfortran 15, fpm, C++ compiler, wxWidgets 3.3 (conda-forge)
 pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
-pixi run example hello  # or: form, showcase (widgets, events, dialogs), layout, plot
+pixi run example hello  # or: form, showcase (widgets, events, dialogs), layout, plot, mandelbrot
 pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
@@ -56,6 +56,11 @@ The C++ shim in `src/shim` is compiled by fpm as part of the library.
 from `wx-config`: `FPM_CXX`, `FPM_CXXFLAGS` (`wx-config --cxxflags`) and
 `FPM_LDFLAGS` (`wx-config --libs core,base`, plus an rpath). To use plain
 `fpm` in a shell, run `eval "$(python tools/fpm_wx.py --env)"` first.
+
+The package depends on fpm's `openmp` metapackage. The Mandelbrot example
+uses it; the library itself has no OpenMP code. Programs built with
+wxFortran are therefore compiled with `-fopenmp` and link gfortran's
+OpenMP runtime (`libgomp`).
 
 To build against a system or custom wxWidgets (3.2 or later), set `WX_CONFIG`
 to its `wx-config`, and make sure the Fortran and C++ compilers produce
@@ -290,6 +295,27 @@ failure prints the message and stops the program (`error stop`).
   which is Cmd on macOS, and `WX_MOD_ALT`). `window%emit_mouse` and
   `window%emit_key` generate them for tests. Clicking a canvas gives it the
   keyboard focus.
+* `wx_bitmap(rgb, scale=)` (or `wx_bitmap(file)`) builds an image once,
+  and `g%draw_bitmap(b, x, y, w, h)` draws it on every repaint. This is much
+  faster than `draw_rgb` for large images redrawn often. With `scale =
+  window%get_content_scale_factor()`, an array computed at the screen's
+  full resolution is drawn sharply on high-DPI screens. Bitmaps belong to
+  the program: call `destroy` when done, or `app%cleanup()` deletes them.
+* Dragging: `window%capture_mouse()` and `release_mouse()` keep mouse events
+  coming while the button is held outside the window. Handle
+  `wxEVT_MOUSE_CAPTURE_LOST` to end a drag if the system takes the capture
+  away. `window%set_cursor(WX_CURSOR_CROSS)` and the other `WX_CURSOR_*`
+  values set the pointer shape, and `wx_begin_busy_cursor()` /
+  `wx_end_busy_cursor()` show a wait cursor during long work.
+* [example/mandelbrot.f90](example/mandelbrot.f90) is an interactive
+  Mandelbrot explorer computed with OpenMP. Drag a box to zoom into it
+  (click, right-click and the wheel zoom too); there are colormaps,
+  iteration and color settings, supersampling, a thread count, presets, a
+  Back history and PNG export.
+
+  ![The Mandelbrot example on macOS, showing Seahorse valley](media/mandelbrot.png)
+
+  The example on macOS, started with `--preset 2` (Seahorse valley).
 * [example/plot.f90](example/plot.f90) is a live scrolling plot built this
   way: axes with tick choice, a grid, a legend, markers, zoom and pan, pause,
   and PNG export. `plot --screenshot out.png` saves an image and exits.
@@ -306,9 +332,10 @@ src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frame
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
 test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas, dialogs,
-                  controls, layout
+                  controls, layout, input (bitmaps, mouse capture, cursors)
 example/          hello, form (menus, status bar, timer), showcase (widgets, events, dialogs),
-                  layout (toolbar, notebook, splitter, sizers, images), plot (drawing)
+                  layout (toolbar, notebook, splitter, sizers, images), plot (drawing),
+                  mandelbrot (drawing, selection, OpenMP)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap

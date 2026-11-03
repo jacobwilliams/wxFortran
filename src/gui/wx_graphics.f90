@@ -35,6 +35,22 @@ module wx_graphics_mod
     public :: wxFONTFAMILY_DEFAULT, wxFONTFAMILY_SWISS, wxFONTFAMILY_ROMAN, wxFONTFAMILY_TELETYPE
     public :: wx_render_png, wx_image_read_rgb
 
+    !> An image made once (from an RGB array or a file) and drawn any number
+    !> of times with `g%draw_bitmap`: much faster than `g%draw_rgb` for large
+    !> images redrawn often. Owned by the program: `destroy` it when done
+    !> (or it is deleted by `app%cleanup()`).
+    type, extends(wx_object), public :: wx_bitmap
+    contains
+        procedure :: get_size => wx_bitmap_get_size
+        procedure :: save_png => wx_bitmap_save_png
+        procedure :: destroy => wx_bitmap_destroy
+    end type wx_bitmap
+
+    !> Create a bitmap from an RGB array or an image file.
+    interface wx_bitmap
+        module procedure wx_bitmap_from_rgb, wx_bitmap_from_file
+    end interface wx_bitmap
+
     !> A drawing context (borrowed from a paint event).
     type, public :: wx_graphics
         type(c_ptr), private :: gc = c_null_ptr
@@ -65,6 +81,7 @@ module wx_graphics_mod
         procedure :: set_antialias => wx_graphics_set_antialias
         procedure :: draw_rgb => wx_graphics_draw_rgb
         procedure :: draw_image_file => wx_graphics_draw_image_file
+        procedure :: draw_bitmap => wx_graphics_draw_bitmap
     end type wx_graphics
 
     !> The drawing context of a `wxEVT_PAINT` event.
@@ -361,6 +378,87 @@ contains
         if (present(height)) h = height
         call wx_check(wxf_gc_draw_image_file(self%gc, file, len(file, c_int), x, y, w, h), stat)
     end subroutine wx_graphics_draw_image_file
+
+    !> Draw bitmap `bitmap` with top-left (x, y), scaled to `width` x
+    !> `height` (default: its logical size), as crisp pixels unless `smooth`.
+    subroutine wx_graphics_draw_bitmap(self, bitmap, x, y, width, height, smooth, stat)
+        class(wx_graphics), intent(inout) :: self
+        class(wx_bitmap), intent(in) :: bitmap
+        real(c_double), intent(in) :: x, y
+        real(c_double), intent(in), optional :: width, height
+        logical, intent(in), optional :: smooth
+        integer, intent(out), optional :: stat
+        real(c_double) :: w, h
+        integer(c_int) :: s
+        w = 0
+        if (present(width)) w = width
+        h = 0
+        if (present(height)) h = height
+        s = 0
+        if (present(smooth)) s = wx_int(smooth)
+        call wx_check(wxf_gc_draw_bitmap(self%gc, bitmap%h, x, y, w, h, s), stat)
+    end subroutine wx_graphics_draw_bitmap
+
+    ! -------------------------------------------------------------------------
+    ! bitmaps
+
+    !> A bitmap of the image `rgb(3, nx, ny)` (0-255). With `scale` > 1
+    !> (e.g. `window%get_content_scale_factor()`), the array has `scale`
+    !> pixels per logical pixel: drawn at its logical size `nx/scale` x
+    !> `ny/scale`, it is sharp on a high-DPI screen.
+    type(wx_bitmap) function wx_bitmap_from_rgb(rgb, scale, stat) result(b)
+        integer, intent(in) :: rgb(:,:,:)
+        real(c_double), intent(in), optional :: scale
+        integer, intent(out), optional :: stat
+        integer(c_int8_t), allocatable :: bytes(:)
+        real(c_double) :: s
+        integer(c_int) :: status
+        if (size(rgb, 1) /= 3) then
+            call wx_check(wx_fail(WX_ERR_ARGUMENT, 'wx_bitmap: rgb must have shape (3, width, height)'), stat)
+            return
+        end if
+        s = 1
+        if (present(scale)) s = scale
+        bytes = wx_rgb_bytes(rgb)
+        status = wxf_bitmap_create_rgb(bytes, int(size(rgb, 2), c_int), int(size(rgb, 3), c_int), s, b%h)
+        if (status /= WX_OK) b%h = 0
+        call wx_check(status, stat)
+    end function wx_bitmap_from_rgb
+
+    !> A bitmap of the image file `file` (PNG, JPEG, ...).
+    type(wx_bitmap) function wx_bitmap_from_file(file, stat) result(b)
+        character(len=*), intent(in) :: file
+        integer, intent(out), optional :: stat
+        integer(c_int) :: status
+        status = wxf_bitmap_load(file, len(file, c_int), b%h)
+        if (status /= WX_OK) b%h = 0
+        call wx_check(status, stat)
+    end function wx_bitmap_from_file
+
+    !> Logical size (pixels divided by the scale).
+    subroutine wx_bitmap_get_size(self, width, height, stat)
+        class(wx_bitmap), intent(in) :: self
+        real(c_double), intent(out) :: width, height
+        integer, intent(out), optional :: stat
+        width = 0
+        height = 0
+        call wx_check(wxf_bitmap_get_size(self%h, width, height), stat)
+    end subroutine wx_bitmap_get_size
+
+    !> Save the bitmap (at full resolution) as a PNG file.
+    subroutine wx_bitmap_save_png(self, filename, stat)
+        class(wx_bitmap), intent(in) :: self
+        character(len=*), intent(in) :: filename
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_bitmap_save_png(self%h, filename, len(filename, c_int)), stat)
+    end subroutine wx_bitmap_save_png
+
+    !> Free the bitmap; its handle becomes invalid.
+    subroutine wx_bitmap_destroy(self, stat)
+        class(wx_bitmap), intent(inout) :: self
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_bitmap_destroy(self%h), stat)
+    end subroutine wx_bitmap_destroy
 
     ! -------------------------------------------------------------------------
     ! images
