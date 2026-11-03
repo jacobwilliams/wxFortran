@@ -116,7 +116,7 @@ bool wxf_dispatching();
 int64_t wxf_register_sizer(wxSizer *s);
 wxSizer *wxf_sizer(int64_t h);
 int64_t wxf_sizer_owner(int64_t h);
-void wxf_sizer_set_owner(int64_t h, int64_t owner);
+void wxf_sizer_set_owner(int64_t h, int64_t owner);   // also: a timer's owner window
 void wxf_sizer_kill(wxSizer *s);   // mark a sizer deleted by wxWidgets
 
 // True if a wxApp exists and wxEntryStart succeeded.

@@ -132,7 +132,22 @@ bool alive(int64_t h, int depth = 0) {
         }
         return true;
     }
-    if (e.evh) return true;
+    if (e.evh) {
+        // a timer owned by a window dies with it (as soon as the window is
+        // being destroyed, not only when wxWidgets deletes the timer)
+        if (e.owner != 0) return depth < 1000 && alive(e.owner, depth + 1);
+        // a menu in a menu bar dies with the bar and its frame
+        if (auto *m = dynamic_cast<wxMenu *>(e.evh)) {
+            while (m->GetParent()) m = m->GetParent();
+            if (wxMenuBar *bar = m->GetMenuBar()) {
+                const int64_t bh = wxf_handle_of(bar);
+                if (bh != 0 && !alive(bh, depth + 1)) return false;
+                const int64_t fh = wxf_handle_of(bar->GetFrame());
+                if (fh != 0 && !alive(fh, depth + 1)) return false;
+            }
+        }
+        return true;
+    }
     if (e.owner == 0) return true;
     return depth < 1000 && alive(e.owner, depth + 1);
 }

@@ -220,8 +220,9 @@ program test_menus
     call loose_bar%destroy()
     call check(.not. loose_bar%is_valid(), 'an unattached menu bar can be destroyed')
 
-    ! --- destroying the frame releases everything
+    ! --- destroying the frame releases everything; its menus are invalid at once
     call frame%destroy()
+    call check(.not. help%is_valid(), 'menus invalid as soon as their frame is destroyed')
     call app%process_pending()
     call check(.not. bar2%is_valid() .and. .not. help%is_valid(), 'menus destroyed with the frame')
     call check(wx_active_handlers() == base_handlers, 'menu handlers released')

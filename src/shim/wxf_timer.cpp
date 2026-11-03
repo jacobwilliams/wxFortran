@@ -21,6 +21,7 @@ WXF_API int wxf_timer_create(int64_t owner, int64_t *out) {
     auto *t = new wxTimer();   // its own owner: events go to the timer itself
     *out = wxf_register_handler(t);
     if (w) {
+        wxf_sizer_set_owner(*out, owner);   // the timer's handle dies with its owner
         wxWeakRef<wxTimer> ref(t);
         w->Bind(wxEVT_DESTROY, [ref, w](wxWindowDestroyEvent &ev) {
             if (ev.GetEventObject() == w && ref) delete ref.get();
