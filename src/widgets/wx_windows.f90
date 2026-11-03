@@ -93,7 +93,11 @@ contains
         wx_window_from%h = obj%h
     end function wx_window_from
 
-    !> Destroy the window and its children.
+    !> Destroy the window and its children. Its handle (and theirs) is invalid
+    !> immediately. Top-level windows are deleted when pending events are next
+    !> processed. A child window destroyed from an event handler is hidden
+    !> now and deleted the same way, since wxWidgets may still be using it
+    !> (e.g. a button destroyed by its own click handler).
     subroutine wx_window_destroy(self, stat)
         class(wx_window), intent(inout) :: self
         integer, intent(out), optional :: stat

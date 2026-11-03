@@ -27,10 +27,10 @@ contains
 end program hello
 ```
 
-**Status:** early development (see [plans/plan.md](plans/plan.md)). Phases 0–1
-and the core of Phase 2 are in place: application and event loop, frames,
-panels, static text, buttons, text controls, check boxes, box sizers, and typed
-events. The API may still change.
+**Status:** early development (see [plans/plan.md](plans/plan.md)). Phases 0–2
+are in place: application and event loop, frames, panels, static text,
+buttons, text controls, check boxes, box sizers, and typed events with a
+tested lifetime contract. The API may still change.
 
 ## Building
 
@@ -71,8 +71,8 @@ root: `python build/dependencies/wxfortran/tools/fpm_wx.py build`. See
 
 | Platform | wxWidgets port | Status |
 |---|---|---|
-| macOS (arm64) | Cocoa | Builds, tests, examples and the consumer check pass locally (conda-forge wxWidgets 3.3.4, gfortran 15, clang++). |
-| Linux (x86-64) | GTK 3 | Configured in CI (tests under Xvfb). Not advertised until CI passes. |
+| macOS (arm64) | Cocoa | Supported: build, tests and consumer check pass in CI and locally (conda-forge wxWidgets 3.3.4, gfortran 15, clang++). |
+| Linux (x86-64) | GTK 3 | Supported: build, tests (under Xvfb) and consumer check pass in CI. |
 | Windows | MSW | Not supported yet (see below). |
 
 ### Phase 0 findings
@@ -90,8 +90,10 @@ root: `python build/dependencies/wxfortran/tools/fpm_wx.py build`. See
   `wxEntryStart` / `wxApp::OnRun` / `wxEntryCleanup`, so the Fortran program
   keeps its own `program` entry point.
 * **Tests:** GUI tests create real native windows but generate events
-  programmatically (`button%emit_click()`, `text%set_value(...)`), and drive
-  the main loop with `wx_call_after`, so they need no user interaction. They
+  programmatically, either synchronously (`button%emit_click()`,
+  `text%set_value(...)`) or queued for the event loop like real input
+  (`button%post_click()`), and drive the main loop with `wx_call_after`, so
+  they need no user interaction. They
   run on a macOS desktop session; on Linux they need an X display (Xvfb in CI).
 
 ## Design
@@ -153,8 +155,10 @@ failure prints the message and stops the program (`error stop`).
   `wxEVT_TEXT_ENTER`, `wxEVT_CHECKBOX`, `wxEVT_CLOSE_WINDOW`, `wxEVT_SIZE`
   and `wxEVT_DESTROY`.
 * Handlers run synchronously on the GUI thread, during event processing:
-  normally inside `app%run()`, or inside the call that generated the event
-  (e.g. `text%set_value`, `button%emit_click`).
+  normally inside `app%run()` (or `app%process_pending()`), or inside the call
+  that generated the event (e.g. `text%set_value`, `button%emit_click`).
+  While the loop runs, `app%run()` and `app%cleanup()` fail with
+  `WX_ERR_STATE`.
 * `data` is kept **by pointer**: pass a `target` (or pointer) that outlives
   the binding. It is passed back as the handler's `data` argument.
 * The `wx_event` passed to a handler is valid only during that call. Using a
@@ -168,6 +172,14 @@ failure prints the message and stops the program (`error stop`).
   disconnect itself), or when its window is destroyed. After that, its handler
   is never called and wxFortran drops its pointer to `data`. Tests check that
   destroying windows releases every binding.
+* A handler may destroy any window, including the one whose event it is
+  handling or one of its parents. The window's handle (and its children's)
+  is invalid at once. A child window destroyed from a handler is hidden at
+  once and deleted from the event loop (wxWidgets may still be using it when
+  the handler returns), so a parent's `child_count` drops only after that.
+  Events still queued for a destroyed window are dropped. `wxEVT_DESTROY`
+  handlers run while the window is being deleted: its handle is already
+  invalid, but `event%source()` still identifies it.
 * `wx_call_after(callback, data)` runs a `wx_callback` once from the event
   loop.
 * All GUI calls must be made on the main thread.
@@ -180,7 +192,7 @@ src/core/         wx_base (errors, handles, strings), wx_events, wx_app
 src/widgets/      wx_windows (window base, sizers), wx_controls (frames, controls)
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
-test/             tests (fpm test)
+test/             tests (fpm test): core, events, lifetime, loop
 example/          hello, form
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)

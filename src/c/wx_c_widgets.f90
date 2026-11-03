@@ -32,7 +32,7 @@ module wx_c_widgets
 
     public :: wxf_frame_create, wxf_frame_set_title, wxf_frame_get_title
     public :: wxf_panel_create, wxf_static_text_create
-    public :: wxf_button_create, wxf_button_emit_click
+    public :: wxf_button_create, wxf_button_emit_click, wxf_button_post_click
     public :: wxf_text_ctrl_create, wxf_text_ctrl_set_value, wxf_text_ctrl_get_value
     public :: wxf_text_ctrl_append, wxf_text_ctrl_clear, wxf_text_ctrl_set_editable
     public :: wxf_check_box_create, wxf_check_box_set_value, wxf_check_box_get_value
@@ -111,6 +111,14 @@ module wx_c_widgets
             integer(c_int64_t), value :: h
             integer(c_int) :: r
         end function wxf_button_emit_click
+
+        !> Queue a click event for the event loop.
+        function wxf_button_post_click(h) bind(C, name='wxf_button_post_click') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int) :: r
+        end function wxf_button_post_click
 
         !> Create a text control.
         function wxf_text_ctrl_create(parent, value, len, style, out) bind(C, name='wxf_text_ctrl_create') result(r)

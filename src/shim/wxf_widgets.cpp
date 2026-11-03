@@ -93,6 +93,18 @@ WXF_API int wxf_button_emit_click(int64_t h) {
     WXF_CATCH
 }
 
+// Queue a button-clicked event: it is delivered by the event loop (or the
+// next process_pending), like a real click, not before this returns.
+WXF_API int wxf_button_post_click(int64_t h) {
+    WXF_TRY
+    WXF_GET(wxButton, b, h);
+    auto *ev = new wxCommandEvent(wxEVT_BUTTON, b->GetId());
+    ev->SetEventObject(b);
+    wxQueueEvent(b, ev);
+    return WXF_OK;
+    WXF_CATCH
+}
+
 // ---------------------------------------------------------------------------
 // wxTextCtrl
 

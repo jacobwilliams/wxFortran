@@ -51,6 +51,7 @@ module wx_controls
     type, extends(wx_window), public :: wx_button
     contains
         procedure :: emit_click => wx_button_emit_click
+        procedure :: post_click => wx_button_post_click
     end type wx_button
 
     !> Create a push button.
@@ -178,6 +179,15 @@ contains
         integer, intent(out), optional :: stat
         call wx_check(wxf_button_emit_click(self%h), stat)
     end subroutine wx_button_emit_click
+
+    !> Queue a `wxEVT_BUTTON` event, as a click would: the event loop
+    !> delivers it later (in `app%run()` or `app%process_pending()`), not
+    !> before this returns.
+    subroutine wx_button_post_click(self, stat)
+        class(wx_button), intent(inout) :: self
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_button_post_click(self%h), stat)
+    end subroutine wx_button_post_click
 
     ! -------------------------------------------------------------------------
     ! wx_text_ctrl

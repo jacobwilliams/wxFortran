@@ -6,6 +6,7 @@
 
 #include <wx/init.h>
 #include <wx/tracker.h>
+#include <wx/weakref.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -104,11 +105,19 @@ bool alive(int64_t h, int depth = 0) {
     if (it == table().end() || it->second.dead) return false;
     const entry &e = it->second;
     if (e.win) {
-        // dead if it, or an ancestor, is being deleted or is scheduled for
-        // deletion (top-level windows are deleted later, when idle)
+        // dead if it, or an ancestor, is being deleted, is scheduled for
+        // deletion (top-level windows are deleted later, when idle), or was
+        // marked dead (destroyed from an event handler: see wxf_window_destroy)
         for (wxWindow *w = e.win; w; w = w->GetParent()) {
             if (w->IsBeingDeleted()) return false;
             if (wxTheApp && wxTheApp->IsScheduledForDestruction(w)) return false;
+            if (w != e.win) {
+                auto r = reverse().find(w);
+                if (r != reverse().end()) {
+                    auto a = table().find(r->second);
+                    if (a != table().end() && a->second.dead) return false;
+                }
+            }
         }
         return true;
     }
@@ -326,6 +335,7 @@ namespace {
 
 struct binding {
     wxEvtHandler *handler;
+    int64_t h;   // handle of the window the handler is bound to
     int kind;
     wxObject *data;
 };
@@ -378,12 +388,17 @@ void on_event(wxEvent &e) {
         e.Skip();
         return;
     }
-    // A destroy event is also sent to handlers of the window's children: only
-    // report it for the window the handler was bound to.
+    auto it = bindings().find(data->slot);
+    if (it == bindings().end()) return;
     if (data->kind == WXF_EVT_DESTROY) {
+        // A destroy event is also sent to handlers of the window's children:
+        // only report it for the window the handler was bound to.
         e.Skip();
-        auto it = bindings().find(data->slot);
-        if (it == bindings().end() || e.GetEventObject() != it->second.handler) return;
+        if (e.GetEventObject() != it->second.handler) return;
+    } else if (!wxf_window(it->second.h)) {
+        // the window was destroyed (its deletion may be pending): no more
+        // events for its handlers
+        return;
     }
     event_stack().push_back({&e, data->kind});
     try {
@@ -402,7 +417,7 @@ WXF_API int wxf_bind(int64_t h, int kind, int slot) {
     if (!with_event_tag(kind, [](const auto &) {}))
         return wxf_fail(WXF_ERR_ARGUMENT, "unknown event kind " + std::to_string(kind));
     auto *data = new wxf_slot_data(slot, kind);
-    bindings()[slot] = {w, kind, data};
+    bindings()[slot] = {w, h, kind, data};
     with_event_tag(kind, [&](const auto &tag) { w->Bind(tag, &on_event, wxID_ANY, wxID_ANY, data); });
     return WXF_OK;
     WXF_CATCH
@@ -559,9 +574,24 @@ WXF_API int wxf_event_get_size(void *e, int *width, int *height) {
 
 // Destroy the window (and its children). Top-level windows are deleted when
 // pending events are next processed; their handle is invalid immediately.
+//
+// A child window destroyed while an event is being dispatched (from a Fortran
+// handler) may be the window processing that event, or one of its parents:
+// deleting it now would leave wxWidgets using freed memory when the handler
+// returns. It is hidden and its handle invalidated now, and it is deleted from
+// the event loop (or the next process_pending).
 WXF_API int wxf_window_destroy(int64_t h) {
     WXF_TRY
     WXF_GET(wxWindow, w, h);
+    if (!w->IsTopLevel() && !event_stack().empty()) {
+        table()[h].dead = true;
+        w->Hide();
+        wxWeakRef<wxWindow> ref(w);
+        wxTheApp->CallAfter([ref]() {
+            if (ref) ref->Destroy();
+        });
+        return WXF_OK;
+    }
     w->Destroy();
     return WXF_OK;
     WXF_CATCH

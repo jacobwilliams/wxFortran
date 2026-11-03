@@ -138,6 +138,10 @@ only through implicit environment state.
 
 ### Phase 0 — Build and ABI spike
 
+**Status: done.** conda-forge wxWidgets 3.3 on macOS and Linux; findings,
+contracts and commands are in the README. Windows was investigated and
+deferred to Phase 4.
+
 - Set up the initial pixi environment and lockfile.
 - Compile and link a minimal C++ shim against wxWidgets and call it from a
   minimal Fortran program using `iso_c_binding`.
@@ -156,6 +160,8 @@ contracts are written down; at least one CI target can build and run it.
 
 ### Phase 1 — Core library and minimal application
 
+**Status: done** (`example/hello.f90`, `test/test_core.f90`; CI on Linux and macOS).
+
 - Add the `wx` umbrella module and private C interfaces.
 - Implement application initialization, event-loop start/exit, top-level
   frame/window creation, basic strings, status/error reporting, and explicit
@@ -170,6 +176,11 @@ contracts are written down; at least one CI target can build and run it.
 native window, and automated checks pass on the initial supported CI target.
 
 ### Phase 2 — Common widgets, layout, and events
+
+**Status: done** (`example/form.f90`; `test/test_events.f90`,
+`test/test_lifetime.f90`, `test/test_loop.f90`). Also added: check box and
+`wxEVT_CHECKBOX`, close/size/destroy events, `wx_call_after`. The form
+example still needs a manual interactive check on each platform.
 
 - Add a `wxPanel`, static text, button, single-line text control, and common
   sizer/layout support.
