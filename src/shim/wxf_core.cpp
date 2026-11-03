@@ -6,6 +6,7 @@
 #include "wxf_graphics.h"
 
 #include <wx/init.h>
+#include <wx/notebook.h>
 #include <wx/spinctrl.h>
 #include <wx/tracker.h>
 #include <wx/weakref.h>
@@ -495,6 +496,8 @@ template <class F> bool with_event_tag(int kind, F f) {
     case WXF_EVT_SPINCTRL: f(wxEVT_SPINCTRL); return true;
     case WXF_EVT_RADIOBOX: f(wxEVT_RADIOBOX); return true;
     case WXF_EVT_SPINCTRLDOUBLE: f(wxEVT_SPINCTRLDOUBLE); return true;
+    case WXF_EVT_NOTEBOOK_PAGE_CHANGED: f(wxEVT_NOTEBOOK_PAGE_CHANGED); return true;
+    case WXF_EVT_NOTEBOOK_PAGE_CHANGING: f(wxEVT_NOTEBOOK_PAGE_CHANGING); return true;
     default: return false;
     }
 }
@@ -703,9 +706,14 @@ WXF_API int wxf_event_get_string(void *e, char **s, int *len) {
 WXF_API int wxf_event_get_selection(void *e, int *index) {
     WXF_TRY
     WXF_EVENT(ev, e);
-    auto *c = dynamic_cast<wxCommandEvent *>(ev);
-    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a command event");
-    const int sel = c->GetSelection();
+    int sel;
+    if (auto *b = dynamic_cast<wxBookCtrlEvent *>(ev)) {
+        sel = b->GetSelection();   // the new page (not the command event's int)
+    } else {
+        auto *c = dynamic_cast<wxCommandEvent *>(ev);
+        if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a command event");
+        sel = c->GetSelection();
+    }
     *index = sel < 0 ? 0 : sel + 1;
     return WXF_OK;
     WXF_CATCH
@@ -722,23 +730,32 @@ WXF_API int wxf_event_get_double(void *e, double *value) {
     WXF_CATCH
 }
 
-// Close events: 1 if the close can be vetoed.
+// Close and "changing" (notify) events: 1 if the change can be vetoed.
 WXF_API int wxf_event_can_veto(void *e, int *can) {
     WXF_TRY
     WXF_EVENT(ev, e);
+    if (auto *n = dynamic_cast<wxNotifyEvent *>(ev)) {
+        *can = 1;
+        (void)n;
+        return WXF_OK;
+    }
     auto *c = dynamic_cast<wxCloseEvent *>(ev);
-    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a close event");
+    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a close or notebook page-changing event");
     *can = wxf_bool(c->CanVeto());
     return WXF_OK;
     WXF_CATCH
 }
 
-// Close events: refuse the close (only if it can be vetoed).
+// Close and "changing" events: refuse the change (if it can be vetoed).
 WXF_API int wxf_event_veto(void *e) {
     WXF_TRY
     WXF_EVENT(ev, e);
+    if (auto *n = dynamic_cast<wxNotifyEvent *>(ev)) {
+        n->Veto();
+        return WXF_OK;
+    }
     auto *c = dynamic_cast<wxCloseEvent *>(ev);
-    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a close event");
+    if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a close or notebook page-changing event");
     if (!c->CanVeto()) return wxf_fail(WXF_ERR_STATE, "this close event cannot be vetoed");
     c->Veto();
     return WXF_OK;

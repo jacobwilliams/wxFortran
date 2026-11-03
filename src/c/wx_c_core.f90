@@ -47,6 +47,9 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_SPINCTRL = 23     !! a wx_spin_ctrl value changed
     integer(c_int), parameter, public :: wxEVT_RADIOBOX = 24     !! a wx_radio_box selection changed
     integer(c_int), parameter, public :: wxEVT_SPINCTRLDOUBLE = 25 !! a wx_spin_ctrl_double value changed
+    integer(c_int), parameter, public :: wxEVT_NOTEBOOK_PAGE_CHANGED = 26  !! a notebook page was selected
+    integer(c_int), parameter, public :: wxEVT_NOTEBOOK_PAGE_CHANGING = 27 !! a notebook page is about to change (can be vetoed)
+    integer(c_int), parameter, public :: wxEVT_TOOL = 9          !! a toolbar tool was clicked (the same event as wxEVT_MENU)
 
     integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 

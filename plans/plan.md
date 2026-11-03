@@ -205,8 +205,11 @@ Standard dialogs (message, file open/save, directory, text entry, choice,
 color, About) with scripted answers for tests, and list/value controls
 (choice, list box, radio box, slider, spin controls, gauge), with
 `test/test_dialogs.f90`, `test/test_controls.f90` and the showcase
-example. Next: OpenGL (`wxGLCanvas`), and possibly a reusable plotting
-module distilled from the plot example.
+example. Containers and layout (notebook, splitter, grid / flex grid /
+static box sizers, toolbar, image view, RGB arrays drawn on a canvas), with
+`test/test_layout.f90` and `example/layout.f90`. Next: OpenGL
+(`wxGLCanvas`); later, a reusable plotting module distilled from the plot
+example.
 
 - Prioritize menus/actions, standard dialogs, status bars, common controls,
   sizers, and basic drawing based on example applications and user demand.

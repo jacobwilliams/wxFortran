@@ -28,7 +28,7 @@ module wx_base
     public :: WX_ERR_ARGUMENT, WX_ERR_FAILED, WX_ERR_EXCEPTION
     public :: wx_last_error, wx_live_objects
     public :: wx_check, wx_fail, wx_take_string, wx_borrow_string, wx_int, wx_logical
-    public :: wx_take_string_list, wx_take_ints, wx_pack_strings
+    public :: wx_take_string_list, wx_take_ints, wx_pack_strings, wx_rgb_bytes
 
     !> An element of a list of strings (e.g. the files chosen in a dialog).
     type, public :: wx_string
@@ -192,6 +192,16 @@ contains
         buf = ' '
         if (n > 0) buf(1:n) = items
     end subroutine wx_pack_strings
+
+    !> An image `rgb(3, width, height)` (0-255) as the shim's byte array
+    !> (values outside 0-255 are clamped).
+    function wx_rgb_bytes(rgb) result(bytes)
+        integer, intent(in) :: rgb(:,:,:)
+        integer(c_int8_t), allocatable :: bytes(:)
+        integer, allocatable :: v(:)
+        v = min(max(reshape(rgb, [size(rgb)]), 0), 255)
+        bytes = int(merge(v - 256, v, v > 127), c_int8_t)
+    end function wx_rgb_bytes
 
     !> Fortran logical to shim boolean (0/1).
     pure elemental integer(c_int) function wx_int(l)

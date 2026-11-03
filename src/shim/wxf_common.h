@@ -62,6 +62,8 @@ enum wxf_event_kind : int {
     WXF_EVT_SPINCTRL = 23,
     WXF_EVT_RADIOBOX = 24,
     WXF_EVT_SPINCTRLDOUBLE = 25,
+    WXF_EVT_NOTEBOOK_PAGE_CHANGED = 26,
+    WXF_EVT_NOTEBOOK_PAGE_CHANGING = 27,
 };
 
 // Modifier key bits: must match WX_MOD_* in src/c/wx_c_core.f90.

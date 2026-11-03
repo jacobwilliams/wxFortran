@@ -32,8 +32,10 @@ are in place: application and event loop, frames, panels, static text,
 buttons, text controls, check boxes, box sizers, and typed events with a
 tested lifetime contract. Phase 3 adds timers, menus, status bars, 2D
 drawing (a canvas with mouse/key input and anti-aliased graphics, saved to
-PNG), the standard dialogs, and list and value controls (choice, list box,
-radio box, slider, spin controls, gauge). The API may still change.
+PNG), the standard dialogs, list and value controls (choice, list box,
+radio box, slider, spin controls, gauge), and containers and layout
+(notebook, splitter, grid sizers, group boxes, toolbar, image view). The API
+may still change.
 
 ## Building
 
@@ -44,7 +46,7 @@ clean checkout:
 pixi install            # gfortran 15, fpm, C++ compiler, wxWidgets 3.3 (conda-forge)
 pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
-pixi run example hello  # or: form, showcase (widgets, events, dialogs: testing by hand), plot
+pixi run example hello  # or: form, showcase (widgets, events, dialogs), layout, plot
 pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
@@ -224,6 +226,29 @@ failure prints the message and stops the program (`error stop`).
 * Setting a value from code (`set_value`, `set_selection`) sends no event.
   `emit_select` and `emit_change` do, for tests.
 
+### Containers and layout
+
+* `wx_notebook` shows tabbed pages, and `wx_splitter_window` shows two panes
+  with a draggable sash. Pages and panes are windows created with the
+  notebook or splitter as their parent. Add them with `book%add_page(page,
+  'Title')` or `split%split_vertically(left, right)`. Notebook events are
+  `wxEVT_NOTEBOOK_PAGE_CHANGING`, which can be vetoed, and
+  `wxEVT_NOTEBOOK_PAGE_CHANGED`. `event%get_selection()` is the new page.
+* `wx_grid_sizer(cols)` lays items out in equal cells.
+  `wx_flex_grid_sizer(cols)` sizes its rows and columns to their contents;
+  call `add_growable_col` and `add_growable_row` to stretch some of them.
+  `wx_static_box_sizer(orient, parent, label)` draws a labeled box around
+  its items; create the items with `sizer%get_static_box()` as their parent.
+* `wx_tool_bar(frame)` adds a toolbar. `add_tool(label, art='wxART_FILE_OPEN'
+  | file='icon.png', kind=, id=)` returns the tool's id. Tool clicks are
+  `wxEVT_TOOL` events, which are the same as `wxEVT_MENU`, so bind them on
+  the frame with `id=`. A tool with a stock id, such as `wxID_OPEN`, shares
+  the handler of the menu item with that id.
+* `wx_static_bitmap` shows an image at its natural size, from a file or from
+  a Fortran array `rgb(3, width, height)`. On a canvas,
+  `g%draw_rgb(rgb, x, y, w, h, smooth=)` draws such an array scaled, for
+  heatmaps or computed images, and `g%draw_image_file` draws an image file.
+
 ### Dialogs
 
 * `wx_message_box` (returns `wxID_OK`, `wxID_CANCEL`, `wxID_YES` or
@@ -276,11 +301,14 @@ src/wx.f90        umbrella module (`use wx`)
 src/core/         wx_base (errors, handles, strings), wx_events, wx_app, wx_timer
 src/gui/          wx_colors, wx_graphics (drawing context, PNG rendering and reading)
 src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, basic controls),
-                  wx_lists, wx_values (more controls), wx_dialogs, wx_canvas
+                  wx_lists, wx_values (more controls), wx_layout (containers, sizers,
+                  toolbar, image view), wx_dialogs, wx_canvas
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
-test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas, dialogs, controls
-example/          hello, form (menus, status bar, timer), showcase (widgets, events, dialogs), plot (drawing)
+test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas, dialogs,
+                  controls, layout
+example/          hello, form (menus, status bar, timer), showcase (widgets, events, dialogs),
+                  layout (toolbar, notebook, splitter, sizers, images), plot (drawing)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap

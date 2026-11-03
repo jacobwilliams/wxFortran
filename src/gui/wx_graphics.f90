@@ -24,6 +24,7 @@ module wx_graphics_mod
     use iso_c_binding
     use wx_c_core
     use wx_c_graphics
+    use wx_c_layout, only: wxf_gc_draw_rgb, wxf_gc_draw_image_file
     use wx_base
     use wx_events
     use wx_colors
@@ -62,6 +63,8 @@ module wx_graphics_mod
         procedure :: scale => wx_graphics_scale
         procedure :: rotate => wx_graphics_rotate
         procedure :: set_antialias => wx_graphics_set_antialias
+        procedure :: draw_rgb => wx_graphics_draw_rgb
+        procedure :: draw_image_file => wx_graphics_draw_image_file
     end type wx_graphics
 
     !> The drawing context of a `wxEVT_PAINT` event.
@@ -313,6 +316,51 @@ contains
         integer, intent(out), optional :: stat
         call wx_check(wxf_gc_set_antialias(self%gc, wx_int(on)), stat)
     end subroutine wx_graphics_set_antialias
+
+    !> Draw the image `rgb(3, nx, ny)` (0-255) scaled into the box with
+    !> top-left (x, y), `width` x `height` pixels (default: its own size).
+    !> Pixels are drawn as crisp blocks unless `smooth` (e.g. for heatmaps of
+    !> a computed field, scale up a small array).
+    subroutine wx_graphics_draw_rgb(self, rgb, x, y, width, height, smooth, stat)
+        class(wx_graphics), intent(inout) :: self
+        integer, intent(in) :: rgb(:,:,:)
+        real(c_double), intent(in) :: x, y
+        real(c_double), intent(in), optional :: width, height
+        logical, intent(in), optional :: smooth
+        integer, intent(out), optional :: stat
+        integer(c_int8_t), allocatable :: bytes(:)
+        real(c_double) :: w, h
+        integer(c_int) :: s
+        if (size(rgb, 1) /= 3) then
+            call wx_check(wx_fail(WX_ERR_ARGUMENT, 'draw_rgb: rgb must have shape (3, width, height)'), stat)
+            return
+        end if
+        w = size(rgb, 2)
+        if (present(width)) w = width
+        h = size(rgb, 3)
+        if (present(height)) h = height
+        s = 0
+        if (present(smooth)) s = wx_int(smooth)
+        bytes = wx_rgb_bytes(rgb)
+        call wx_check(wxf_gc_draw_rgb(self%gc, bytes, int(size(rgb, 2), c_int), int(size(rgb, 3), c_int), &
+                                      x, y, w, h, s), stat)
+    end subroutine wx_graphics_draw_rgb
+
+    !> Draw an image file with top-left (x, y), scaled to `width` x `height`
+    !> (default: its own size).
+    subroutine wx_graphics_draw_image_file(self, file, x, y, width, height, stat)
+        class(wx_graphics), intent(inout) :: self
+        character(len=*), intent(in) :: file
+        real(c_double), intent(in) :: x, y
+        real(c_double), intent(in), optional :: width, height
+        integer, intent(out), optional :: stat
+        real(c_double) :: w, h
+        w = 0
+        if (present(width)) w = width
+        h = 0
+        if (present(height)) h = height
+        call wx_check(wxf_gc_draw_image_file(self%gc, file, len(file, c_int), x, y, w, h), stat)
+    end subroutine wx_graphics_draw_image_file
 
     ! -------------------------------------------------------------------------
     ! images

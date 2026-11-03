@@ -37,7 +37,8 @@ module wx_events
     public :: WXK_BACK, WXK_TAB, WXK_RETURN, WXK_ESCAPE, WXK_SPACE, WXK_DELETE, WXK_END
     public :: WXK_HOME, WXK_LEFT, WXK_UP, WXK_RIGHT, WXK_DOWN, WXK_F1, WXK_PAGEUP, WXK_PAGEDOWN
     public :: wxEVT_CHOICE, wxEVT_LISTBOX, wxEVT_LISTBOX_DCLICK, wxEVT_SLIDER, wxEVT_SPINCTRL
-    public :: wxEVT_RADIOBOX, wxEVT_SPINCTRLDOUBLE
+    public :: wxEVT_RADIOBOX, wxEVT_SPINCTRLDOUBLE, wxEVT_NOTEBOOK_PAGE_CHANGED
+    public :: wxEVT_NOTEBOOK_PAGE_CHANGING, wxEVT_TOOL
     public :: wx_events_slot_new, wx_events_slot_free
     public :: wx_event_handler, wx_callback
     public :: wx_call_after, wx_active_handlers
@@ -388,7 +389,8 @@ contains
         wx_event_is_checked = self%get_int(stat) /= 0
     end function wx_event_is_checked
 
-    !> Close events: true if the close can be refused with `veto`.
+    !> Close and notebook page-changing events: true if the change can be
+    !> refused with `veto`.
     logical function wx_event_can_veto(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat
@@ -398,7 +400,8 @@ contains
         wx_event_can_veto = wx_logical(v)
     end function wx_event_can_veto
 
-    !> Close events: refuse to close the window.
+    !> Close events: refuse to close the window. Notebook page-changing
+    !> events: stay on the current page.
     subroutine wx_event_veto(self, stat)
         class(wx_event), intent(inout) :: self
         integer, intent(out), optional :: stat
@@ -474,7 +477,7 @@ contains
     end function wx_event_get_modifiers
 
     !> Choice, list box and radio box events: the item chosen (1-based; 0:
-    !> none). `event%get_string()` gives its text.
+    !> none; `event%get_string()` gives its text). Notebook events: the new page.
     integer function wx_event_get_selection(self, stat)
         class(wx_event), intent(in) :: self
         integer, intent(out), optional :: stat

@@ -4,6 +4,7 @@
 !> [[wx_app_mod]] (application and event loop), [[wx_timers]],
 !> [[wx_windows]] (windows and sizers), [[wx_menus]], [[wx_controls]]
 !> (frames and controls), [[wx_lists]] and [[wx_values]] (more controls),
+!> [[wx_layout]] (notebook, splitter, grid sizers, toolbar, image view),
 !> [[wx_dialogs]], [[wx_canvas_mod]], [[wx_graphics_mod]] (drawing) and
 !> [[wx_colors]].
 module wx
@@ -22,6 +23,7 @@ module wx
     use wx_lists
     use wx_values
     use wx_dialogs
+    use wx_layout
     use wx_canvas_mod
     implicit none
     public
