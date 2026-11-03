@@ -153,7 +153,7 @@ contains
         call wx_check(wxf_menu_append_separator(self%h), stat)
     end subroutine wx_menu_append_separator
 
-    !> Append `submenu` (which this menu then owns) as an item labelled `text`.
+    !> Append `submenu` (which this menu then owns) as an item labeled `text`.
     subroutine wx_menu_append_submenu(self, submenu, text, stat)
         class(wx_menu), intent(inout) :: self
         class(wx_menu), intent(in) :: submenu

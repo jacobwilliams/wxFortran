@@ -230,7 +230,7 @@ contains
     ! -------------------------------------------------------------------------
     ! wx_button
 
-    !> Create a button labelled `label` inside `parent`.
+    !> Create a button labeled `label` inside `parent`.
     type(wx_button) function wx_button_new(parent, label, stat)
         class(wx_window), intent(in) :: parent
         character(len=*), intent(in) :: label
@@ -331,7 +331,7 @@ contains
     ! -------------------------------------------------------------------------
     ! wx_check_box
 
-    !> Create a check box labelled `label` inside `parent`.
+    !> Create a check box labeled `label` inside `parent`.
     type(wx_check_box) function wx_check_box_new(parent, label, checked, stat)
         class(wx_window), intent(in) :: parent
         character(len=*), intent(in) :: label

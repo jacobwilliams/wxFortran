@@ -31,8 +31,41 @@ module wx_c_core
     integer(c_int), parameter, public :: wxEVT_TIMER = 8         !! a timer fired
     integer(c_int), parameter, public :: wxEVT_MENU = 9          !! a menu item was selected
 
+    integer(c_int), parameter, public :: wxEVT_PAINT = 10        !! a wx_canvas needs drawing
+    integer(c_int), parameter, public :: wxEVT_LEFT_DOWN = 11    !! left mouse button pressed
+    integer(c_int), parameter, public :: wxEVT_LEFT_UP = 12      !! left mouse button released
+    integer(c_int), parameter, public :: wxEVT_RIGHT_DOWN = 13   !! right mouse button pressed
+    integer(c_int), parameter, public :: wxEVT_MOTION = 14       !! mouse moved
+    integer(c_int), parameter, public :: wxEVT_MOUSEWHEEL = 15   !! mouse wheel turned
+    integer(c_int), parameter, public :: wxEVT_KEY_DOWN = 16     !! key pressed (in the focused window)
+    integer(c_int), parameter, public :: wxEVT_LEFT_DCLICK = 17  !! left button double-clicked
+    integer(c_int), parameter, public :: wxEVT_LEAVE_WINDOW = 18 !! mouse left the window
+
     integer(c_int), parameter, public :: wxID_ANY = -1           !! any id (wxWidgets' own value)
 
+    ! modifier key bits: must match WXF_MOD_* in src/shim/wxf_common.h
+    integer(c_int), parameter, public :: WX_MOD_SHIFT = 1    !! Shift held
+    integer(c_int), parameter, public :: WX_MOD_CONTROL = 2  !! Control held (Cmd on macOS)
+    integer(c_int), parameter, public :: WX_MOD_ALT = 4      !! Alt (Option) held
+
+    ! key codes (wxWidgets' own values); letters and digits are their upper-case ASCII codes
+    integer(c_int), parameter, public :: WXK_BACK = 8        !! Backspace
+    integer(c_int), parameter, public :: WXK_TAB = 9         !! Tab
+    integer(c_int), parameter, public :: WXK_RETURN = 13     !! Return / Enter
+    integer(c_int), parameter, public :: WXK_ESCAPE = 27     !! Escape
+    integer(c_int), parameter, public :: WXK_SPACE = 32      !! space bar
+    integer(c_int), parameter, public :: WXK_DELETE = 127    !! Delete
+    integer(c_int), parameter, public :: WXK_END = 312       !! End
+    integer(c_int), parameter, public :: WXK_HOME = 313      !! Home
+    integer(c_int), parameter, public :: WXK_LEFT = 314      !! left arrow
+    integer(c_int), parameter, public :: WXK_UP = 315        !! up arrow
+    integer(c_int), parameter, public :: WXK_RIGHT = 316     !! right arrow
+    integer(c_int), parameter, public :: WXK_DOWN = 317      !! down arrow
+    integer(c_int), parameter, public :: WXK_F1 = 340        !! F1 (F2... follow)
+    integer(c_int), parameter, public :: WXK_PAGEUP = 366    !! Page Up
+    integer(c_int), parameter, public :: WXK_PAGEDOWN = 367  !! Page Down
+
+    public :: wxf_set_error
     public :: wxf_last_error, wxf_clear_error, wxf_free, wxf_is_valid, wxf_live_count
     public :: wxf_app_init, wxf_app_run, wxf_app_exit_main_loop, wxf_app_is_main_loop_running
     public :: wxf_app_process_pending, wxf_app_set_exit_on_frame_delete, wxf_app_cleanup
@@ -47,6 +80,10 @@ module wx_c_core
     public :: wxf_window_get_id, wxf_window_set_focus, wxf_window_layout, wxf_window_fit
     public :: wxf_window_center, wxf_window_set_tooltip, wxf_window_child_count
     public :: wxf_window_set_sizer
+    public :: wxf_event_get_position, wxf_event_get_wheel, wxf_event_left_is_down
+    public :: wxf_event_get_key, wxf_event_get_modifiers, wxf_event_get_graphics
+    public :: wxf_window_refresh, wxf_window_set_background_color, wxf_window_get_client_size
+    public :: wxf_window_emit_mouse, wxf_window_emit_key
 
     interface
 
@@ -57,6 +94,17 @@ module wx_c_core
             integer(c_int), intent(out) :: len
             type(c_ptr) :: p
         end function wxf_last_error
+
+        !> Record an error message; returns `status`.
+        function wxf_set_error(status, msg, len_msg) &
+                bind(C, name='wxf_set_error') result(r)
+            import :: c_char, c_int
+            implicit none
+            integer(c_int), value :: status
+            character(kind=c_char), intent(in) :: msg(*)
+            integer(c_int), value :: len_msg
+            integer(c_int) :: r
+        end function wxf_set_error
 
         !> Clear the last error message.
         subroutine wxf_clear_error() bind(C, name='wxf_clear_error')
@@ -449,6 +497,130 @@ module wx_c_core
             integer(c_int), value :: fit
             integer(c_int) :: r
         end function wxf_window_set_sizer
+
+
+        !> Mouse position of a mouse event.
+        function wxf_event_get_position(e, x, y) &
+                bind(C, name='wxf_event_get_position') result(r)
+            import :: c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            integer(c_int), intent(out) :: x
+            integer(c_int), intent(out) :: y
+            integer(c_int) :: r
+        end function wxf_event_get_position
+
+        !> Wheel rotation of a mouse event, in notches.
+        function wxf_event_get_wheel(e, steps) &
+                bind(C, name='wxf_event_get_wheel') result(r)
+            import :: c_double, c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            real(c_double), intent(out) :: steps
+            integer(c_int) :: r
+        end function wxf_event_get_wheel
+
+        !> Whether the left button is down (mouse events).
+        function wxf_event_left_is_down(e, down) &
+                bind(C, name='wxf_event_left_is_down') result(r)
+            import :: c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            integer(c_int), intent(out) :: down
+            integer(c_int) :: r
+        end function wxf_event_left_is_down
+
+        !> Key code and Unicode character of a key event.
+        function wxf_event_get_key(e, code, unicode) &
+                bind(C, name='wxf_event_get_key') result(r)
+            import :: c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            integer(c_int), intent(out) :: code
+            integer(c_int), intent(out) :: unicode
+            integer(c_int) :: r
+        end function wxf_event_get_key
+
+        !> Modifier keys of a mouse or key event.
+        function wxf_event_get_modifiers(e, mods) &
+                bind(C, name='wxf_event_get_modifiers') result(r)
+            import :: c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            integer(c_int), intent(out) :: mods
+            integer(c_int) :: r
+        end function wxf_event_get_modifiers
+
+        !> Graphics context and size of a paint event.
+        function wxf_event_get_graphics(e, gc, width, height) &
+                bind(C, name='wxf_event_get_graphics') result(r)
+            import :: c_double, c_int, c_ptr
+            implicit none
+            type(c_ptr), value :: e
+            type(c_ptr), intent(out) :: gc
+            real(c_double), intent(out) :: width
+            real(c_double), intent(out) :: height
+            integer(c_int) :: r
+        end function wxf_event_get_graphics
+
+        !> Repaint a window soon.
+        function wxf_window_refresh(h) &
+                bind(C, name='wxf_window_refresh') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int) :: r
+        end function wxf_window_refresh
+
+        !> Set a window's background color.
+        function wxf_window_set_background_color(h, red, green, blue, alpha) &
+                bind(C, name='wxf_window_set_background_color') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), value :: red
+            integer(c_int), value :: green
+            integer(c_int), value :: blue
+            integer(c_int), value :: alpha
+            integer(c_int) :: r
+        end function wxf_window_set_background_color
+
+        !> Size of a window's client area.
+        function wxf_window_get_client_size(h, width, height) &
+                bind(C, name='wxf_window_get_client_size') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), intent(out) :: width
+            integer(c_int), intent(out) :: height
+            integer(c_int) :: r
+        end function wxf_window_get_client_size
+
+        !> Send a synthetic mouse event.
+        function wxf_window_emit_mouse(h, kind, x, y, wheel, mods) &
+                bind(C, name='wxf_window_emit_mouse') result(r)
+            import :: c_double, c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), value :: kind
+            integer(c_int), value :: x
+            integer(c_int), value :: y
+            real(c_double), value :: wheel
+            integer(c_int), value :: mods
+            integer(c_int) :: r
+        end function wxf_window_emit_mouse
+
+        !> Send a synthetic key-down event.
+        function wxf_window_emit_key(h, code, unicode, mods) &
+                bind(C, name='wxf_window_emit_key') result(r)
+            import :: c_int, c_int64_t
+            implicit none
+            integer(c_int64_t), value :: h
+            integer(c_int), value :: code
+            integer(c_int), value :: unicode
+            integer(c_int), value :: mods
+            integer(c_int) :: r
+        end function wxf_window_emit_key
 
     end interface
 

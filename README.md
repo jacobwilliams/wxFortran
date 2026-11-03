@@ -30,8 +30,9 @@ end program hello
 **Status:** early development (see [plans/plan.md](plans/plan.md)). Phases 0–2
 are in place: application and event loop, frames, panels, static text,
 buttons, text controls, check boxes, box sizers, and typed events with a
-tested lifetime contract. Phase 3 has started with timers, menus and status
-bars. The API may still change.
+tested lifetime contract. Phase 3 has started with timers, menus, status
+bars, and 2D drawing (a canvas with mouse/key input and anti-aliased
+graphics, saved to PNG). The API may still change.
 
 ## Building
 
@@ -42,7 +43,7 @@ clean checkout:
 pixi install            # gfortran 15, fpm, C++ compiler, wxWidgets 3.3 (conda-forge)
 pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
-pixi run example hello  # or: form, showcase (every feature, for testing by hand)
+pixi run example hello  # or: form, showcase (widgets/events, for testing by hand), plot
 pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
@@ -164,8 +165,11 @@ failure prints the message and stops the program (`error stop`).
   handler runs only for events from that window or menu item id. Example:
   `frame%bind(wxEVT_MENU, on_open, id=id_open)`. Available kinds:
   `wxEVT_BUTTON`, `wxEVT_TEXT`, `wxEVT_TEXT_ENTER`, `wxEVT_CHECKBOX`,
-  `wxEVT_CLOSE_WINDOW`, `wxEVT_SIZE`, `wxEVT_DESTROY`, `wxEVT_TIMER` and
-  `wxEVT_MENU`.
+  `wxEVT_CLOSE_WINDOW`, `wxEVT_SIZE`, `wxEVT_DESTROY`, `wxEVT_TIMER`,
+  `wxEVT_MENU`, `wxEVT_PAINT` (canvases only), the mouse events
+  `wxEVT_LEFT_DOWN`, `wxEVT_LEFT_UP`, `wxEVT_LEFT_DCLICK`, `wxEVT_RIGHT_DOWN`,
+  `wxEVT_MOTION`, `wxEVT_MOUSEWHEEL` and `wxEVT_LEAVE_WINDOW`, and
+  `wxEVT_KEY_DOWN`.
 * Menu events go to the menu, then to its frame. Items are identified by
   integer ids: stock ids (`wxID_EXIT`, `wxID_ABOUT`, ...), which get standard
   labels and, on macOS, their place in the application menu, or ids returned
@@ -203,16 +207,45 @@ failure prints the message and stops the program (`error stop`).
 * A failed wxWidgets assertion (a usage error inside wxWidgets) is printed on
   stderr and recorded as the last error. It does not open a dialog.
 
+### Drawing
+
+* A `wx_canvas` is a window drawn by its `wxEVT_PAINT` handlers. In the
+  handler, `g = wx_graphics(event)` gives the drawing context.
+  `g%width` and `g%height` are the area's size. The context is
+  anti-aliased and uses `real(c_double)` pixel coordinates from the top-left,
+  with y pointing down. It provides pens (width, dash style), brushes, fonts,
+  lines and polylines from Fortran arrays, polygons, rectangles, circles,
+  rotated text with measurement, clipping, transforms, and push/pop of the
+  state. Call `canvas%refresh()` after changing what it shows.
+* The context is borrowed: using it after its handler returns fails with
+  `WX_ERR_STATE`.
+* The same paint handler draws on screen, into `canvas%save_png(file)`, and
+  offscreen with `wx_render_png(file, width, height, handler, data)`, which
+  needs no window. `wx_image_read_rgb(file, rgb)` reads an image back, e.g.
+  to test pixels.
+* Colors are `type(wx_color)` (8-bit RGBA): `wx_color(r, g, b)`,
+  `wx_color_hex('#1f77b4')`, or named ones (`wxBLACK`, `wxWHITE`, ...).
+* Mouse and key events: `event%get_position`, `get_wheel_rotation`,
+  `left_is_down`, `get_key_code` (`WXK_*`, or the upper-case ASCII code),
+  `get_unicode_key`, and `get_modifiers` (`WX_MOD_SHIFT`, `WX_MOD_CONTROL`,
+  which is Cmd on macOS, and `WX_MOD_ALT`). `window%emit_mouse` and
+  `window%emit_key` generate them for tests. Clicking a canvas gives it the
+  keyboard focus.
+* [example/plot.f90](example/plot.f90) is a live scrolling plot built this
+  way: axes with tick choice, a grid, a legend, markers, zoom and pan, pause,
+  and PNG export. `plot --screenshot out.png` saves an image and exits.
+
 ## Repository layout
 
 ```text
 src/wx.f90        umbrella module (`use wx`)
 src/core/         wx_base (errors, handles, strings), wx_events, wx_app, wx_timer
-src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, controls)
+src/gui/          wx_colors, wx_graphics (drawing context, PNG rendering and reading)
+src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frames, controls), wx_canvas
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
-test/             tests (fpm test): core, events, lifetime, loop, timer, menus
-example/          hello, form (with menus, status bar and a timer), showcase (every feature)
+test/             tests (fpm test): core, events, lifetime, loop, timer, menus, canvas
+example/          hello, form (menus, status bar, timer), showcase (widgets and events), plot (drawing)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap

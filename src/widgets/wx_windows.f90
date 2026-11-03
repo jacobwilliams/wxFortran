@@ -19,6 +19,7 @@ module wx_windows
     use wx_c_widgets
     use wx_base
     use wx_events
+    use wx_colors, only: wx_color
     implicit none
     private
 
@@ -53,6 +54,11 @@ module wx_windows
         procedure :: center => wx_window_center
         procedure :: child_count => wx_window_child_count
         procedure :: set_sizer => wx_window_set_sizer
+        procedure :: refresh => wx_window_refresh
+        procedure :: set_background_color => wx_window_set_background_color
+        procedure :: get_client_size => wx_window_get_client_size
+        procedure :: emit_mouse => wx_window_emit_mouse
+        procedure :: emit_key => wx_window_emit_key
     end type wx_window
 
     !> A generic window reference to an existing object (e.g. `event%source()`).
@@ -320,6 +326,73 @@ contains
         if (present(fit)) f = fit
         call wx_check(wxf_window_set_sizer(self%h, sizer%h, wx_int(f)), stat)
     end subroutine wx_window_set_sizer
+
+    !> Repaint the window soon (a canvas's paint handlers run again).
+    subroutine wx_window_refresh(self, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_window_refresh(self%h), stat)
+    end subroutine wx_window_refresh
+
+    !> Set the background color (for a canvas: the color it is cleared to
+    !> before its paint handlers run).
+    subroutine wx_window_set_background_color(self, color, stat)
+        class(wx_window), intent(inout) :: self
+        type(wx_color), intent(in) :: color
+        integer, intent(out), optional :: stat
+        call wx_check(wxf_window_set_background_color(self%h, int(color%r, c_int), int(color%g, c_int), &
+                                                       int(color%b, c_int), int(color%a, c_int)), stat)
+    end subroutine wx_window_set_background_color
+
+    !> Size of the client area (inside borders, title bar, menu and status bar).
+    subroutine wx_window_get_client_size(self, width, height, stat)
+        class(wx_window), intent(in) :: self
+        integer, intent(out) :: width, height
+        integer, intent(out), optional :: stat
+        integer(c_int) :: w, h
+        w = 0
+        h = 0
+        call wx_check(wxf_window_get_client_size(self%h, w, h), stat)
+        width = w
+        height = h
+    end subroutine wx_window_get_client_size
+
+    !> Send a mouse event to the window's handlers, as the mouse would (for
+    !> tests and automation): `kind` is `wxEVT_LEFT_DOWN`, `wxEVT_LEFT_UP`,
+    !> `wxEVT_RIGHT_DOWN`, `wxEVT_MOTION`, `wxEVT_MOUSEWHEEL` (with `wheel`
+    !> notches), `wxEVT_LEFT_DCLICK` or `wxEVT_LEAVE_WINDOW`; `modifiers` are
+    !> `WX_MOD_*` bits. Handlers run before this returns.
+    subroutine wx_window_emit_mouse(self, kind, x, y, wheel, modifiers, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(in) :: kind, x, y
+        real(c_double), intent(in), optional :: wheel
+        integer, intent(in), optional :: modifiers
+        integer, intent(out), optional :: stat
+        real(c_double) :: w
+        integer(c_int) :: m
+        w = 0
+        if (present(wheel)) w = wheel
+        m = 0
+        if (present(modifiers)) m = int(modifiers, c_int)
+        call wx_check(wxf_window_emit_mouse(self%h, int(kind, c_int), int(x, c_int), int(y, c_int), w, m), stat)
+    end subroutine wx_window_emit_mouse
+
+    !> Send a key-down event to the window's handlers (for tests and
+    !> automation). `code` as for `event%get_key_code()`; `unicode` defaults
+    !> to `code` for printable ASCII.
+    subroutine wx_window_emit_key(self, code, unicode, modifiers, stat)
+        class(wx_window), intent(inout) :: self
+        integer, intent(in) :: code
+        integer, intent(in), optional :: unicode, modifiers
+        integer, intent(out), optional :: stat
+        integer(c_int) :: u, m
+        u = 0
+        if (code >= 32 .and. code < 127) u = int(code, c_int)
+        if (present(unicode)) u = int(unicode, c_int)
+        m = 0
+        if (present(modifiers)) m = int(modifiers, c_int)
+        call wx_check(wxf_window_emit_key(self%h, int(code, c_int), u, m), stat)
+    end subroutine wx_window_emit_key
 
     ! -------------------------------------------------------------------------
     ! sizers

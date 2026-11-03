@@ -27,7 +27,7 @@ module wx_base
     public :: WX_OK, WX_ERR_INVALID_HANDLE, WX_ERR_NO_APP, WX_ERR_STATE
     public :: WX_ERR_ARGUMENT, WX_ERR_FAILED, WX_ERR_EXCEPTION
     public :: wx_last_error, wx_live_objects
-    public :: wx_check, wx_take_string, wx_borrow_string, wx_int, wx_logical
+    public :: wx_check, wx_fail, wx_take_string, wx_borrow_string, wx_int, wx_logical
 
     !> A reference to a wxWidgets object (or none: a default-initialized
     !> wrapper has handle 0 and is invalid).
@@ -85,6 +85,14 @@ contains
             error stop 1
         end if
     end subroutine wx_check
+
+    !> Record `msg` as the last error and return `status` (for checks done
+    !> in Fortran; report the result with [[wx_check]]).
+    integer(c_int) function wx_fail(status, msg)
+        integer(c_int), intent(in) :: status
+        character(len=*), intent(in) :: msg
+        wx_fail = wxf_set_error(status, msg, len(msg, c_int))
+    end function wx_fail
 
     !> Copy `len` bytes of UTF-8 at `p` into a Fortran string (not freed).
     function wx_borrow_string(p, len) result(s)

@@ -1,5 +1,6 @@
-!> A tour of every wxFortran feature, for testing by hand. Everything that
-!> happens is written to the event log at the bottom of the window.
+!> A tour of wxFortran's widgets, events, menus and timers, for testing by
+!> hand (drawing is shown by example/plot.f90). Everything that happens is
+!> written to the event log at the bottom of the window.
 !>
 !> Try:
 !> * Type in the field: the byte count updates (wxEVT_TEXT) and the text

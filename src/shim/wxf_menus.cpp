@@ -137,7 +137,7 @@ WXF_API int wxf_menu_append_separator(int64_t h) {
     WXF_CATCH
 }
 
-// Append `sub` (which this menu then owns) as a submenu labelled `text`.
+// Append `sub` (which this menu then owns) as a submenu labeled `text`.
 WXF_API int wxf_menu_append_submenu(int64_t h, int64_t sub, const char *text, int len) {
     WXF_TRY
     WXF_MENU(m, h);

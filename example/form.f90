@@ -1,4 +1,4 @@
-!> A small form: labelled text fields, a check box and buttons laid out with
+!> A small form: labeled text fields, a check box and buttons laid out with
 !> nested sizers. Submit (or Enter in a field) shows a greeting; the live
 !> character count updates as you type; Quit closes the frame. A menu bar
 !> (File > Clear, File > Quit, Help > About) and a status bar with a clock

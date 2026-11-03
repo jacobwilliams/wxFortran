@@ -3,6 +3,7 @@
 // windows and sizers.
 
 #include "wxf_common.h"
+#include "wxf_graphics.h"
 
 #include <wx/init.h>
 #include <wx/tracker.h>
@@ -39,6 +40,11 @@ WXF_API const char *wxf_last_error(int *len) {
 }
 
 WXF_API void wxf_clear_error() { wxf_error_message.clear(); }
+
+// Record an error found on the Fortran side; returns `status`.
+WXF_API int wxf_set_error(int status, const char *msg, int len) {
+    return wxf_fail(status, std::string(msg, static_cast<size_t>(len > 0 ? len : 0)));
+}
 
 // ---------------------------------------------------------------------------
 // strings
@@ -307,6 +313,7 @@ WXF_API int wxf_app_init(const char *name, int len) {
         wxEntryCleanup();
         return wxf_fail(WXF_ERR_FAILED, "wxApp::OnInit failed");
     }
+    wxInitAllImageHandlers();   // PNG for saving and loading images
     app_ready = true;
     return WXF_OK;
     WXF_CATCH
@@ -433,6 +440,15 @@ template <class F> bool with_event_tag(int kind, F f) {
     case WXF_EVT_CHECKBOX: f(wxEVT_CHECKBOX); return true;
     case WXF_EVT_TIMER: f(wxEVT_TIMER); return true;
     case WXF_EVT_MENU: f(wxEVT_MENU); return true;
+    case WXF_EVT_PAINT: f(wxfEVT_DRAW); return true;
+    case WXF_EVT_LEFT_DOWN: f(wxEVT_LEFT_DOWN); return true;
+    case WXF_EVT_LEFT_UP: f(wxEVT_LEFT_UP); return true;
+    case WXF_EVT_RIGHT_DOWN: f(wxEVT_RIGHT_DOWN); return true;
+    case WXF_EVT_MOTION: f(wxEVT_MOTION); return true;
+    case WXF_EVT_MOUSEWHEEL: f(wxEVT_MOUSEWHEEL); return true;
+    case WXF_EVT_KEY_DOWN: f(wxEVT_KEY_DOWN); return true;
+    case WXF_EVT_LEFT_DCLICK: f(wxEVT_LEFT_DCLICK); return true;
+    case WXF_EVT_LEAVE_WINDOW: f(wxEVT_LEAVE_WINDOW); return true;
     default: return false;
     }
 }
@@ -468,6 +484,9 @@ void on_event(wxEvent &e) {
         // events for its handlers
         return;
     }
+    // a click gives a canvas the keyboard focus (as default processing would)
+    if (data->kind == WXF_EVT_LEFT_DOWN || data->kind == WXF_EVT_RIGHT_DOWN)
+        if (auto *c = dynamic_cast<wxfCanvas *>(it->second.handler)) c->SetFocus();
     event_stack().push_back({&e, data->kind});
     try {
         wxf_dispatcher(data->slot, &e, data->kind);
@@ -480,6 +499,28 @@ void on_event(wxEvent &e) {
 
 bool wxf_dispatching() { return !event_stack().empty(); }
 
+wxGraphicsContext *wxf_live_graphics(void *gc, wxfDrawEvent **ev) {
+    if (!gc) return nullptr;
+    for (const current_event &c : event_stack()) {
+        auto *d = dynamic_cast<wxfDrawEvent *>(c.event);
+        if (d && d->gc == gc) {
+            if (ev) *ev = d;
+            return d->gc;
+        }
+    }
+    return nullptr;
+}
+
+void wxf_dispatch_draw(int slot, wxfDrawEvent &ev) {
+    if (!wxf_dispatcher) return;
+    event_stack().push_back({&ev, WXF_EVT_PAINT});
+    try {
+        wxf_dispatcher(slot, &ev, WXF_EVT_PAINT);
+    } catch (...) {
+    }
+    event_stack().pop_back();
+}
+
 // Bind Fortran slot `slot` to events of `kind` on window or event handler
 // `h`, from the window or menu item `id` only (wxID_ANY: from any).
 WXF_API int wxf_bind(int64_t h, int kind, int slot, int id) {
@@ -489,6 +530,8 @@ WXF_API int wxf_bind(int64_t h, int kind, int slot, int id) {
     if (!w) return wxf_fail_handle(h);
     if (!with_event_tag(kind, [](const auto &) {}))
         return wxf_fail(WXF_ERR_ARGUMENT, "unknown event kind " + std::to_string(kind));
+    if (kind == WXF_EVT_PAINT && !dynamic_cast<wxfCanvas *>(w))
+        return wxf_fail(WXF_ERR_ARGUMENT, "paint events are sent only to a wx_canvas");
     auto *data = new wxf_slot_data(slot, kind);
     bindings()[slot] = {w, h, kind, id, data};
     with_event_tag(kind, [&](const auto &tag) { w->Bind(tag, &on_event, id, wxID_ANY, data); });
@@ -629,6 +672,82 @@ WXF_API int wxf_event_veto(void *e) {
     if (!c) return wxf_fail(WXF_ERR_ARGUMENT, "not a close event");
     if (!c->CanVeto()) return wxf_fail(WXF_ERR_STATE, "this close event cannot be vetoed");
     c->Veto();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Mouse events: the position in the window, in pixels.
+WXF_API int wxf_event_get_position(void *e, int *x, int *y) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *m = dynamic_cast<wxMouseEvent *>(ev);
+    if (!m) return wxf_fail(WXF_ERR_ARGUMENT, "not a mouse event");
+    *x = m->GetX();
+    *y = m->GetY();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Mouse wheel events: rotation in notches (positive: away from the user).
+WXF_API int wxf_event_get_wheel(void *e, double *steps) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *m = dynamic_cast<wxMouseEvent *>(ev);
+    if (!m) return wxf_fail(WXF_ERR_ARGUMENT, "not a mouse event");
+    const int delta = m->GetWheelDelta() > 0 ? m->GetWheelDelta() : 120;
+    *steps = static_cast<double>(m->GetWheelRotation()) / delta;
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Mouse events: 1 if the left button is down.
+WXF_API int wxf_event_left_is_down(void *e, int *down) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *m = dynamic_cast<wxMouseEvent *>(ev);
+    if (!m) return wxf_fail(WXF_ERR_ARGUMENT, "not a mouse event");
+    *down = wxf_bool(m->LeftIsDown());
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Key events: the key code (WXK_* or the upper-case ASCII letter/digit) and
+// the Unicode character (0 if none).
+WXF_API int wxf_event_get_key(void *e, int *code, int *unicode) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    auto *k = dynamic_cast<wxKeyEvent *>(ev);
+    if (!k) return wxf_fail(WXF_ERR_ARGUMENT, "not a key event");
+    *code = k->GetKeyCode();
+    *unicode = static_cast<int>(k->GetUnicodeKey());
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Mouse and key events: modifier keys held (WXF_MOD_* bits). Control is
+// Cmd on macOS.
+WXF_API int wxf_event_get_modifiers(void *e, int *mods) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    const wxKeyboardState *s = dynamic_cast<wxMouseEvent *>(ev);
+    if (!s) s = dynamic_cast<wxKeyEvent *>(ev);
+    if (!s) return wxf_fail(WXF_ERR_ARGUMENT, "not a mouse or key event");
+    *mods = (s->ShiftDown() ? WXF_MOD_SHIFT : 0) | (s->ControlDown() ? WXF_MOD_CONTROL : 0) |
+            (s->AltDown() ? WXF_MOD_ALT : 0);
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Paint events: the borrowed graphics context and the drawing area size.
+WXF_API int wxf_event_get_graphics(void *e, void **gc, double *width, double *height) {
+    WXF_TRY
+    WXF_EVENT(ev, e);
+    *gc = nullptr;
+    auto *d = dynamic_cast<wxfDrawEvent *>(ev);
+    if (!d) return wxf_fail(WXF_ERR_ARGUMENT, "not a paint event");
+    *gc = d->gc;
+    *width = d->width;
+    *height = d->height;
     return WXF_OK;
     WXF_CATCH
 }
@@ -817,6 +936,32 @@ WXF_API int wxf_window_center(int64_t h) {
     WXF_TRY
     WXF_GET(wxWindow, w, h);
     w->Centre();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+// Repaint the window soon (canvases: their paint handlers run again).
+WXF_API int wxf_window_refresh(int64_t h) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    w->Refresh();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_window_set_background_color(int64_t h, int r, int g, int b, int a) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    w->SetBackgroundColour(wxf_color(r, g, b, a));
+    w->Refresh();
+    return WXF_OK;
+    WXF_CATCH
+}
+
+WXF_API int wxf_window_get_client_size(int64_t h, int *width, int *height) {
+    WXF_TRY
+    WXF_GET(wxWindow, w, h);
+    w->GetClientSize(width, height);
     return WXF_OK;
     WXF_CATCH
 }

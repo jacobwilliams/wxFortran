@@ -46,7 +46,19 @@ enum wxf_event_kind : int {
     WXF_EVT_CHECKBOX = 7,
     WXF_EVT_TIMER = 8,
     WXF_EVT_MENU = 9,
+    WXF_EVT_PAINT = 10,         // a wx_canvas needs drawing (wxfEVT_DRAW)
+    WXF_EVT_LEFT_DOWN = 11,
+    WXF_EVT_LEFT_UP = 12,
+    WXF_EVT_RIGHT_DOWN = 13,
+    WXF_EVT_MOTION = 14,
+    WXF_EVT_MOUSEWHEEL = 15,
+    WXF_EVT_KEY_DOWN = 16,
+    WXF_EVT_LEFT_DCLICK = 17,
+    WXF_EVT_LEAVE_WINDOW = 18,
 };
+
+// Modifier key bits: must match WX_MOD_* in src/c/wx_c_core.f90.
+enum { WXF_MOD_SHIFT = 1, WXF_MOD_CONTROL = 2, WXF_MOD_ALT = 4 };
 
 // Fortran callbacks: dispatch(slot, event or null, event kind), release(slot).
 typedef void (*wxf_dispatch_fn)(int slot, void *event, int kind);

@@ -31,6 +31,12 @@ module wx_events
 
     public :: wxEVT_BUTTON, wxEVT_TEXT, wxEVT_TEXT_ENTER, wxEVT_CLOSE_WINDOW
     public :: wxEVT_SIZE, wxEVT_DESTROY, wxEVT_CHECKBOX, wxEVT_TIMER, wxEVT_MENU, wxID_ANY
+    public :: wxEVT_PAINT, wxEVT_LEFT_DOWN, wxEVT_LEFT_UP, wxEVT_RIGHT_DOWN, wxEVT_MOTION
+    public :: wxEVT_MOUSEWHEEL, wxEVT_KEY_DOWN, wxEVT_LEFT_DCLICK, wxEVT_LEAVE_WINDOW
+    public :: WX_MOD_SHIFT, WX_MOD_CONTROL, WX_MOD_ALT
+    public :: WXK_BACK, WXK_TAB, WXK_RETURN, WXK_ESCAPE, WXK_SPACE, WXK_DELETE, WXK_END
+    public :: WXK_HOME, WXK_LEFT, WXK_UP, WXK_RIGHT, WXK_DOWN, WXK_F1, WXK_PAGEUP, WXK_PAGEDOWN
+    public :: wx_events_slot_new, wx_events_slot_free
     public :: wx_event_handler, wx_callback
     public :: wx_call_after, wx_active_handlers
     public :: wx_events_install
@@ -51,6 +57,13 @@ module wx_events
         procedure :: can_veto => wx_event_can_veto
         procedure :: veto => wx_event_veto
         procedure :: get_size => wx_event_get_size
+        procedure :: get_position => wx_event_get_position
+        procedure :: get_wheel_rotation => wx_event_get_wheel_rotation
+        procedure :: left_is_down => wx_event_left_is_down
+        procedure :: get_key_code => wx_event_get_key_code
+        procedure :: get_unicode_key => wx_event_get_unicode_key
+        procedure :: get_modifiers => wx_event_get_modifiers
+        procedure :: c_event => wx_event_c_event
     end type wx_event
 
     !> Anything that receives events: windows, timers and menus.
@@ -179,6 +192,22 @@ contains
         slots(slot)%on_call => null()
         slots(slot)%data => null()
     end subroutine release
+
+    !> Register `handler` (and `data`) in a temporary slot, for a shim call
+    !> that dispatches to it directly; release it with [[wx_events_slot_free]].
+    integer function wx_events_slot_new(handler, data) result(slot)
+        procedure(wx_event_handler) :: handler
+        class(*), intent(inout), target, optional :: data
+        slot = new_slot()
+        slots(slot)%on_event => handler
+        if (present(data)) slots(slot)%data => data
+    end function wx_events_slot_new
+
+    !> Release a slot from [[wx_events_slot_new]].
+    subroutine wx_events_slot_free(slot)
+        integer, intent(in) :: slot
+        call release(int(slot, c_int))
+    end subroutine wx_events_slot_free
 
     !> Number of live bindings and pending deferred calls (for leak tests).
     integer function wx_active_handlers()
@@ -371,6 +400,80 @@ contains
         integer, intent(out), optional :: stat
         call wx_check(wxf_event_veto(self%p), stat)
     end subroutine wx_event_veto
+
+    !> Mouse events: the position in the window, in pixels from its top-left.
+    subroutine wx_event_get_position(self, x, y, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out) :: x, y
+        integer, intent(out), optional :: stat
+        integer(c_int) :: cx, cy
+        cx = 0
+        cy = 0
+        call wx_check(wxf_event_get_position(self%p, cx, cy), stat)
+        x = cx
+        y = cy
+    end subroutine wx_event_get_position
+
+    !> Mouse wheel events: rotation in notches (positive: away from the
+    !> user; fractional for smooth-scrolling devices).
+    real(c_double) function wx_event_get_wheel_rotation(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        real(c_double) :: steps
+        steps = 0
+        call wx_check(wxf_event_get_wheel(self%p, steps), stat)
+        wx_event_get_wheel_rotation = steps
+    end function wx_event_get_wheel_rotation
+
+    !> Mouse events: true if the left button is down (e.g. while dragging).
+    logical function wx_event_left_is_down(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: v
+        v = 0
+        call wx_check(wxf_event_left_is_down(self%p, v), stat)
+        wx_event_left_is_down = wx_logical(v)
+    end function wx_event_left_is_down
+
+    !> Key events: the key code: `WXK_*` for special keys, the upper-case
+    !> ASCII code for letters and digits (`iachar('A')`).
+    integer function wx_event_get_key_code(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: code, uni
+        code = 0
+        uni = 0
+        call wx_check(wxf_event_get_key(self%p, code, uni), stat)
+        wx_event_get_key_code = code
+    end function wx_event_get_key_code
+
+    !> Key events: the Unicode code point of the key's character (0 if none).
+    integer function wx_event_get_unicode_key(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: code, uni
+        code = 0
+        uni = 0
+        call wx_check(wxf_event_get_key(self%p, code, uni), stat)
+        wx_event_get_unicode_key = uni
+    end function wx_event_get_unicode_key
+
+    !> Mouse and key events: the modifier keys held, as `WX_MOD_*` bits (test
+    !> with `iand(event%get_modifiers(), WX_MOD_SHIFT) /= 0`).
+    integer function wx_event_get_modifiers(self, stat)
+        class(wx_event), intent(in) :: self
+        integer, intent(out), optional :: stat
+        integer(c_int) :: v
+        v = 0
+        call wx_check(wxf_event_get_modifiers(self%p, v), stat)
+        wx_event_get_modifiers = v
+    end function wx_event_get_modifiers
+
+    !> The shim's event pointer (for wxFortran's own modules, e.g. `wx_graphics(event)`).
+    type(c_ptr) function wx_event_c_event(self)
+        class(wx_event), intent(in) :: self
+        wx_event_c_event = self%p
+    end function wx_event_c_event
 
     !> Size events: the new window size in pixels.
     subroutine wx_event_get_size(self, width, height, stat)

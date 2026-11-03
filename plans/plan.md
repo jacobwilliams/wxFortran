@@ -198,8 +198,11 @@ callback unbinding, parent destruction, and repeated creation/destruction.
 **Status: in progress.** Done: timers (`wx_timer`, `wxEVT_TIMER`), menus
 (`wx_menu_bar`, `wx_menu`, check/radio items, submenus, stock ids,
 `wxEVT_MENU` with per-id binding), and frame status bars, with
-`test/test_timer.f90`, `test/test_menus.f90` and the form example. Next:
-standard dialogs, more controls, basic drawing.
+`test/test_timer.f90`, `test/test_menus.f90` and the form example. Basic
+drawing: `wx_canvas`, `wx_graphics` (wxGraphicsContext), mouse/key events,
+PNG save/render/read, with `test/test_canvas.f90` and `example/plot.f90`.
+Next: standard dialogs, more controls, OpenGL (`wxGLCanvas`), and possibly a
+reusable plotting module distilled from the plot example.
 
 - Prioritize menus/actions, standard dialogs, status bars, common controls,
   sizers, and basic drawing based on example applications and user demand.
@@ -269,7 +272,7 @@ hand-written API behavior, and generation reduces rather than adds maintenance.
 | GUI tests need a display or native event loop | Separate unit and integration suites; use supported headless/virtual-display setups and make skips visible. |
 | Wrapping too much creates an unmaintainable surface | Start with common workflows, prioritize documented APIs, and defer generation until repeated patterns are proven. |
 | Text encoding and native string conversions differ | Centralize conversion, use explicit UTF-8 semantics, and test non-ASCII text across platforms. |
-| wxWidgets licensing obligations are misunderstood | Review the upstream wxWindows licence and distribution obligations before release; do not assume all dependency licenses are interchangeable. |
+| wxWidgets licensing obligations are misunderstood | Review the upstream wxWindows license and distribution obligations before release; do not assume all dependency licenses are interchangeable. |
 
 ## Reference material
 
@@ -283,6 +286,6 @@ hand-written API behavior, and generation reduces rather than adds maintenance.
   [MSW build instructions](https://github.com/wxWidgets/wxWidgets/blob/master/docs/msw/install.md),
   and [macOS build instructions](https://github.com/wxWidgets/wxWidgets/blob/master/docs/osx/install.md)
   — platform-specific build requirements.
-- [wxWidgets licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt)
+- [wxWidgets license](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt)
   — review before redistributing binaries or publishing the binding.
 
