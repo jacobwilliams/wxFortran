@@ -42,7 +42,7 @@ clean checkout:
 pixi install            # gfortran 15, fpm, C++ compiler, wxWidgets 3.3 (conda-forge)
 pixi run build          # library and examples
 pixi run test           # tests (Linux without a display: run under xvfb-run)
-pixi run example hello  # or: form
+pixi run example hello  # or: form, showcase (every feature, for testing by hand)
 pixi run lint           # docstrings and implicit none in interface bodies
 pixi run consumer       # build/run ci/consumer, a separate project using wxFortran
 ```
@@ -212,7 +212,7 @@ src/widgets/      wx_windows (window base, sizers), wx_menus, wx_controls (frame
 src/c/            private bind(C) interfaces to the shim
 src/shim/         C++ C-ABI shim over wxWidgets
 test/             tests (fpm test): core, events, lifetime, loop, timer, menus
-example/          hello, form (with menus, status bar and a timer)
+example/          hello, form (with menus, status bar and a timer), showcase (every feature)
 ci/consumer/      downstream fpm project used as a CI check
 tools/            fpm_wx.py (build helper), check_fortran.py (lint)
 plans/plan.md     roadmap
